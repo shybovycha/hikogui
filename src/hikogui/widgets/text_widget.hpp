@@ -185,22 +185,6 @@ public:
     {
         assert(window() != nullptr);
 
-        // Read the latest text from the delegate.
-        _text = delegate->get_text(this);
-
-        _line_break_opportunities = unicode_line_break(_text);
-        _word_break_opportunities = unicode_word_break(_text);
-        _sentence_break_opportunities = unicode_sentence_break(_text);
-        _run_lengths = shaper_make_run_lengths(_text, _word_break_opportunities);
-        _run_ids = shaper_make_run_ids(_run_lengths);
-        _grapheme_metrics = shaper_collect_grapheme_metrics(_text, _run_lengths, style.font_size, style.text_style);
-
-        // The embedding levels are used to determine the direction of the text.
-        // First are the embedding levels of text, followed by the embedding levels of paragraphs.
-        // The embedding levels are used to flip the text into display order, and also used
-        // to determine if the brackets are mirrored.
-        _embedding_levels = shaper_collect_embedding_levels(_text);
-
         auto const maximum_width = [&] {
             if (auto pixel_width = std::get_if<unit::pixels_f>(&style.width)) {
                 return *pixel_width;
@@ -209,50 +193,40 @@ public:
             }
         }();
 
-        auto const line_sizes = shaper_fold_lines(_line_break_opportunities, _grapheme_metrics, maximum_width);
-        auto const line_metrics = shaper_collect_line_metrics(_grapheme_metrics, line_sizes);
-        auto const text_metrics = shaper_collect_text_metrics(line_metrics, style.vertical_alignment);
+        // Read the latest text from the delegate.
+        _phase1 =
+            shaper_phase1(delegate->get_text(this), style.font_size, style.text_style, maximum_width, style.vertical_alignment);
 
         // Make sure that the current selection fits the new text.
-        _selection.resize(_text.size());
+        _selection.resize(_phase1.text.size());
 
         _shaped_text = text_shaper{
-            _text,
+            _phase1.text,
             style.font_size,
             style.text_style,
             window()->pixel_density,
             os_settings::alignment(style.horizontal_alignment),
             os_settings::left_to_right()};
 
-        auto const max_width = [&] {
-            if (edit_mode() == text_widget_edit_mode::line_edit) {
-                // In line-edit mode the text should not wrap.
-                return std::numeric_limits<float>::infinity();
-            } else {
-                // Labels and text-fields should wrap at 550.0f pixels.
-                // 550.0f pixels is about the width of a A4 paper.
-                return 550.0f;
-            }
-        }();
-
-        auto const text_size = extent2{ceil_in(unit::pixels, text_metrics.width), ceil_in(unit::pixels, text_metrics.height)};
-        auto const minimum_spacing = ceil_as(unit::pixels, text_metrics.overhang + text_metrics.underhang);
-        _margins = max(style.margins_px, hi::margins(0.0f, minimum_spacing.in(unit::pixels), 0.0f, minimum_spacing.in(unit::pixels)));
+        auto const text_size =
+            extent2{ceil_in(unit::pixels, _phase1.text_metrics.width), ceil_in(unit::pixels, _phase1.text_metrics.height)};
+        auto const minimum_spacing = ceil_as(unit::pixels, _phase1.text_metrics.overhang + _phase1.text_metrics.underhang);
+        _margins =
+            max(style.margins_px, hi::margins(0.0f, minimum_spacing.in(unit::pixels), 0.0f, minimum_spacing.in(unit::pixels)));
 
         return _constraints_cache = {
                    text_size,
                    text_size,
                    text_size,
                    _margins,
-                   baseline{style.baseline_priority, text_metrics.baseline_function}};
+                   baseline{style.baseline_priority, _phase1.text_metrics.baseline_function}};
     }
 
     void set_layout(widget_layout const& context) noexcept override
     {
         super::set_layout(context);
 
-        _line_lengths = shaper_fold_lines(_line_break_opportunities, _grapheme_metrics, unit::pixels(context.width()));
-        _display_order = shaper_display_order(_line_lengths, _embedding_levels, _text);
+        _phase2 = shaper_phase2(_phase1, unit::pixels(context.width()));
 
         _shaped_text.layout(context.rectangle(), context.get_baseline().in(unit::pixels), context.sub_pixel_size);
     }
@@ -823,14 +797,8 @@ private:
 
     enum class cursor_state_type { off, on, busy, none };
 
-    gstring _text;
-    unicode_line_break_vector _line_break_opportunities;
-    unicode_word_break_vector _word_break_opportunities;
-    unicode_sentence_break_vector _sentence_break_opportunities;
-    std::vector<size_t> _run_lengths;
-    std::vector<size_t> _run_ids;
-    std::vector<shaper_grapheme_metrics> _grapheme_metrics;
-    std::vector<int8_t> _embedding_levels;
+    shaper_phase1_result _phase1;
+    shaper_phase2_result _phase2;
 
     std::vector<size_t> _line_lengths;
     std::vector<size_t> _display_order;
@@ -945,18 +913,18 @@ private:
     {
         auto const [first, last] = _selection.selection_indices();
 
-        return gstring_view{_text}.substr(first, last - first);
+        return gstring_view{_phase1.text}.substr(first, last - first);
     }
 
     void undo_push() noexcept
     {
-        _undo_stack.emplace(_text, _selection);
+        _undo_stack.emplace(_phase1.text, _selection);
     }
 
     void undo() noexcept
     {
         if (_undo_stack.can_undo()) {
-            auto const& [text, selection] = _undo_stack.undo(_text, _selection);
+            auto const& [text, selection] = _undo_stack.undo(_phase1.text, _selection);
 
             delegate->set_text(this, text);
             _selection = selection;
@@ -1008,7 +976,7 @@ private:
      */
     void fix_cursor_position() noexcept
     {
-        auto const size = _text.size();
+        auto const size = _phase1.text.size();
         if (_overwrite_mode and _selection.empty() and _selection.cursor().after()) {
             _selection = _selection.cursor().before_neighbor(size);
         }
@@ -1023,7 +991,7 @@ private:
 
         auto const [first, last] = _selection.selection_indices();
 
-        auto text = _text;
+        auto text = _phase1.text;
         text.replace(first, last - first, replacement);
         delegate->set_text(this, text);
 
@@ -1038,11 +1006,11 @@ private:
      */
     void add_character(grapheme c, add_type keyboard_mode) noexcept
     {
-        auto const [start_selection, end_selection] = _selection.selection(_text.size());
+        auto const [start_selection, end_selection] = _selection.selection(_phase1.text.size());
         auto original_grapheme = grapheme{char32_t{0xffff}};
 
         if (_selection.empty() and _overwrite_mode and start_selection.before()) {
-            original_grapheme = _text[start_selection.index()];
+            original_grapheme = _phase1.text[start_selection.index()];
 
             auto const [first, last] = _shaped_text.select_char(start_selection);
             _selection.drag_selection(last);
@@ -1054,7 +1022,7 @@ private:
             _selection = start_selection;
 
         } else if (keyboard_mode == add_type::dead) {
-            _selection = start_selection.before_neighbor(_text.size());
+            _selection = start_selection.before_neighbor(_phase1.text.size());
             _has_dead_character = original_grapheme;
         }
     }
@@ -1063,14 +1031,14 @@ private:
     {
         if (_has_dead_character) {
             hi_assert(_selection.cursor().before());
-            hi_assert_bounds(_selection.cursor().index(), _text);
+            hi_assert_bounds(_selection.cursor().index(), _phase1.text);
 
             if (_has_dead_character != U'\uffff') {
-                auto text = _text;
+                auto text = _phase1.text;
                 text[_selection.cursor().index()] = *_has_dead_character;
                 delegate->set_text(this, text);
             } else {
-                auto text = _text;
+                auto text = _phase1.text;
                 text.erase(_selection.cursor().index(), 1);
                 delegate->set_text(this, text);
             }

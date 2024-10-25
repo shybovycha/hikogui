@@ -437,12 +437,13 @@ struct shaper_phase1_result {
  * @param font_size The base font size of the text.
  * @param style The text-style-set containing the styles of the text
  *              for different languages and phrasings.
- * @param width The maximum width the text is allowed to be.
+ * @param maximumum_width The maximum width the text is allowed to be.
+ * @param alignment The vertical alignment of the text.
  * @return pre-calculated information used mostly for phase 2.
  *         The text-metrics is used for the constraints of a text-widget.
  */
 [[nodiscard]] inline shaper_phase1_result shaper_phase1(
-    gstring text, unit::pixels_f font_size, text_style_set style, unit::pixels_f max_width)
+    gstring text, unit::pixels_per_em_f font_size, text_style_set style, unit::pixels_f maximum_width, vertical_alignment alignment)
 {
     auto r = shaper_phase1_result{};
 
@@ -450,20 +451,34 @@ struct shaper_phase1_result {
     r.line_break_opportunities = unicode_line_break(r.text);
     r.word_break_opportunities = unicode_word_break(r.text);
     r.sentence_break_opportunities = unicode_sentence_break(r.text);
-    r.run_lengths = shaper_make_run_lengths(r.text, _word_break_opportunities);
-    r.run_ids = shaper_make_run_ids(_run_lengths);
-    r.grapheme_metrics = shaper_collect_grapheme_metrics(r.text, _run_lengths, font_size, style);
+    r.run_lengths = shaper_make_run_lengths(r.text, r.word_break_opportunities);
+    r.run_ids = shaper_make_run_ids(r.run_lengths);
+    r.grapheme_metrics = shaper_collect_grapheme_metrics(r.text, r.run_lengths, font_size, style);
     r.embedding_levels = shaper_collect_embedding_levels(r.text);
 
     // The calculations will be redone in phase 2, using the actual-width of the text.
-    auto const line_sizes = shaper_fold_lines(_line_break_opportunities, _grapheme_metrics, maximum_width);
-    auto const line_metrics = shaper_collect_line_metrics(_grapheme_metrics, line_sizes);
-    r.text_metrics = shaper_collect_text_metrics(line_metrics, style.vertical_alignment);
+    auto const line_sizes = shaper_fold_lines(r.line_break_opportunities, r.grapheme_metrics, maximum_width);
+    auto const line_metrics = shaper_collect_line_metrics(r.grapheme_metrics, line_sizes);
+    r.text_metrics = shaper_collect_text_metrics(line_metrics, alignment);
     return r;
 }
 
-[[nodiscard]] inline shaper_phase2_result shaper_phase2(shaper_phase2_result const& phase1, unit::pixels_f actual_width)
+struct shaper_phase2_result {
+    std::vector<size_t> line_lengths;
+    std::vector<shaper_line_metrics> line_metrics;
+    std::vector<size_t> display_order;
+    shaper_text_metrics text_metrics;
+};
+
+[[nodiscard]] inline shaper_phase2_result shaper_phase2(shaper_phase1_result const& phase1, unit::pixels_f actual_width)
 {
+    auto r = shaper_phase2_result{};
+
+    r.line_lengths = shaper_fold_lines(phase1.line_break_opportunities, phase1.grapheme_metrics, actual_width);
+    r.line_metrics = shaper_collect_line_metrics(phase1.grapheme_metrics, r.line_lengths);
+    r.text_metrics = shaper_collect_text_metrics(r.line_metrics, vertical_alignment::top);
+    r.display_order = shaper_display_order(r.line_lengths, phase1.embedding_levels, phase1.text);
+    return r;
 }
 
 
