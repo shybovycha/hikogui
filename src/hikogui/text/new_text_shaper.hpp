@@ -374,4 +374,97 @@ struct shaper_text_metrics {
         });
 }
 
+struct shaper_phase1_result {
+    /** The text, a list of graphemes in logical order.
+     */
+    gstring text;
+
+    /** A list of break opportunities where lines are allowed to be broken.
+     */
+    unicode_line_break_vector line_break_opportunities;
+
+    /** A list of break opportunities where the edges of words are.
+     *
+     * This list is used for selecting, or navigating words.
+     *
+     * It is also used combined with the grapheme's attributes
+     * to make runs that can be shaped as a single entity by the
+     * font program.
+     */
+    unicode_word_break_vector word_break_opportunities;
+
+    /** A list of break opportunities for the edges of sentences.
+     *
+     * This list is used for selecting, or navigating sentences.
+     */
+    unicode_sentence_break_vector sentence_break_opportunities;
+
+    /**
+     * @brief The length of each run of graphemes that can be handled
+     *        as a single entity by the font program.
+     */
+    std::vector<size_t> run_lengths;
+
+    /** Unique ids for each run, assigned to each grapheme.
+     *
+     * This is used to identify multiple graphemes that are part
+     * of a single run, when processing the graphemes in display order
+     * instead of logical order.
+     */
+    std::vector<size_t> run_ids;
+
+    /** Metrics collected for each grapheme.
+     */
+    std::vector<shaper_grapheme_metrics> grapheme_metrics;
+
+    /** The unicode-bid embedding level for each grapheme and each paragraph.
+     *
+     * These are two lists appened together:
+     *  - Embedding level for each grapheme, followed by
+     *  - Embedding level for each paragraph.
+     *
+     * The embedding levels can also be used to determine which brackets
+     * need to be mirrored (when the embedding level is odd).
+     */
+    std::vector<int8_t> embedding_levels;
+
+    shaper_text_metrics text_metrics;
+};
+
+/** Precalculate text-shaping before knowing actual width of the text.
+ *
+ * @param text The text to shape.
+ * @param font_size The base font size of the text.
+ * @param style The text-style-set containing the styles of the text
+ *              for different languages and phrasings.
+ * @param width The maximum width the text is allowed to be.
+ * @return pre-calculated information used mostly for phase 2.
+ *         The text-metrics is used for the constraints of a text-widget.
+ */
+[[nodiscard]] inline shaper_phase1_result shaper_phase1(
+    gstring text, unit::pixels_f font_size, text_style_set style, unit::pixels_f max_width)
+{
+    auto r = shaper_phase1_result{};
+
+    r.text = std::move(text);
+    r.line_break_opportunities = unicode_line_break(r.text);
+    r.word_break_opportunities = unicode_word_break(r.text);
+    r.sentence_break_opportunities = unicode_sentence_break(r.text);
+    r.run_lengths = shaper_make_run_lengths(r.text, _word_break_opportunities);
+    r.run_ids = shaper_make_run_ids(_run_lengths);
+    r.grapheme_metrics = shaper_collect_grapheme_metrics(r.text, _run_lengths, font_size, style);
+    r.embedding_levels = shaper_collect_embedding_levels(r.text);
+
+    // The calculations will be redone in phase 2, using the actual-width of the text.
+    auto const line_sizes = shaper_fold_lines(_line_break_opportunities, _grapheme_metrics, maximum_width);
+    auto const line_metrics = shaper_collect_line_metrics(_grapheme_metrics, line_sizes);
+    r.text_metrics = shaper_collect_text_metrics(line_metrics, style.vertical_alignment);
+    return r;
+}
+
+[[nodiscard]] inline shaper_phase2_result shaper_phase2(shaper_phase2_result const& phase1, unit::pixels_f actual_width)
+{
+}
+
+
 }

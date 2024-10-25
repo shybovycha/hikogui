@@ -235,10 +235,7 @@ public:
             }
         }();
 
-        auto const br = _shaped_text.bounds(max_width);
-
         auto const text_size = extent2{ceil_in(unit::pixels, text_metrics.width), ceil_in(unit::pixels, text_metrics.height)};
-
         auto const minimum_spacing = ceil_as(unit::pixels, text_metrics.overhang + text_metrics.underhang);
         _margins = max(style.margins_px, hi::margins(0.0f, minimum_spacing.in(unit::pixels), 0.0f, minimum_spacing.in(unit::pixels)));
 
