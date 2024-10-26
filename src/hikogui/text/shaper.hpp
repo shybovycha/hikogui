@@ -12,8 +12,6 @@
 hi_export_module(hikogui.text : text_guess_size);
 
 hi_export namespace hi::inline v1 {
-
-
 struct shaper_run_indices {
     size_t first = 0;
     size_t last = 0;
@@ -29,8 +27,7 @@ struct shaper_run_indices {
  * @param word_breaks The word breaks in the text.
  * @return A vector of number of graphemes in each run.
  */
-[[nodiscard]] inline std::vector<size_t>
-shaper_make_run_lengths(gstring_view text, unicode_word_break_vector word_breaks)
+[[nodiscard]] inline std::vector<size_t> shaper_make_run_lengths(gstring_view text, unicode_word_break_vector word_breaks)
 {
     auto r = std::vector<size_t>{};
 
@@ -61,10 +58,10 @@ shaper_make_run_lengths(gstring_view text, unicode_word_break_vector word_breaks
 }
 
 /** Get a identifier for each run.
- * 
+ *
  * This is used by the shaper when advancing glyphs in display order, to easily
  * identify when a new run starts.
- * 
+ *
  * @param run_lengths The number of graphemes in each run.
  * @return A vector of run identifiers, one for each grapheme in logical order.
  */
@@ -149,7 +146,6 @@ struct shaper_grapheme_metrics {
         hi::font* font = nullptr;
         auto font_metrics = hi::font_metrics_px{};
         for (auto [g, glyph_ids] : std::views::zip(run, run_glyphs)) {
-
             if (font == nullptr or font_id != glyph_ids.font) {
                 font_id = glyph_ids.font;
                 font = std::addressof(get_font(font_id));
@@ -187,16 +183,13 @@ struct shaper_grapheme_metrics {
 
 [[nodiscard]] inline std::vector<int8_t> shaper_collect_embedding_levels(gstring_view text)
 {
-    return unicode_bidi_get_embedding_levels(
-        text.begin(),
-        text.end(),
-        [](auto const& g) {
-            return g.starter();
-        });
+    return unicode_bidi_get_embedding_levels(text.begin(), text.end(), [](auto const& g) {
+        return g.starter();
+    });
 }
 
 /** Fold lines of a text.
- * 
+ *
  * @param break_opportunities The line break opportunities in the text.
  * @param grapheme_metrics_range The sizing information of each grapheme.
  * @param maximum_line_width The maximum width of a line.
@@ -295,7 +288,8 @@ struct shaper_text_metrics {
     };
 };
 
-[[nodiscard]] inline shaper_text_metrics shaper_collect_text_metrics(std::vector<shaper_line_metrics> const &line_metrics, hi::vertical_alignment alignment)
+[[nodiscard]] inline shaper_text_metrics
+shaper_collect_text_metrics(std::vector<shaper_line_metrics> const& line_metrics, hi::vertical_alignment alignment)
 {
     auto r = shaper_text_metrics{};
 
@@ -308,7 +302,7 @@ struct shaper_text_metrics {
     auto const descender = line_metrics.back().descender;
 
     r.height = cap_height;
-    for (auto const &m : line_metrics) {
+    for (auto const& m : line_metrics) {
         r.width = std::max(r.width, m.width);
         r.height += m.advance;
     }
@@ -322,12 +316,13 @@ struct shaper_text_metrics {
 
     // The baseline of the middle line, or the average of the two middle lines.
     // The distance from the bottom of the text to the baseline.
-    auto const middle_baseline_from_bottom = r.height - [&]{
+    auto const middle_baseline_from_bottom = r.height - [&] {
         auto const i = line_metrics.size() % 2 == 0 ? (line_metrics.size() / 2 - 1) : line_metrics.size() / 2;
 
-        auto const y = std::accumulate(line_metrics.begin(), line_metrics.begin() + i + 1, unit::pixels(0.0f), [](auto sum, auto const& m) {
-            return sum + m.advance;
-        });
+        auto const y =
+            std::accumulate(line_metrics.begin(), line_metrics.begin() + i + 1, unit::pixels(0.0f), [](auto sum, auto const& m) {
+                return sum + m.advance;
+            });
 
         if (line_metrics.size() % 2 == 0) {
             auto const y2 = y + line_metrics[i].advance;
@@ -363,15 +358,12 @@ struct shaper_text_metrics {
     return r;
 }
 
-[[nodiscard]] inline std::vector<size_t> shaper_display_order(std::vector<size_t> const& line_sizes, std::vector<int8_t> const& embedding_levels, gstring_view text)
+[[nodiscard]] inline std::vector<size_t>
+shaper_display_order(std::vector<size_t> const& line_sizes, std::vector<int8_t> const& embedding_levels, gstring_view text)
 {
-    return unicode_bidi_to_display_order(
-        line_sizes,
-        embedding_levels.begin(),
-        text.begin(),
-        [](auto const& g) {
-            return ucd_get_bidi_class(g.starter());
-        });
+    return unicode_bidi_to_display_order(line_sizes, embedding_levels.begin(), text.begin(), [](auto const& g) {
+        return ucd_get_bidi_class(g.starter());
+    });
 }
 
 struct shaper_phase1_result {
@@ -431,6 +423,127 @@ struct shaper_phase1_result {
     shaper_text_metrics text_metrics;
 };
 
+struct shaper_positioned_glyphs {
+    font_glyph_ids glyphs = {};
+    std::vector<aarectangle> bounding_boxes;
+    float advance = 0.0f;
+};
+
+[[nodiscard]] inline std::vector<shaper_positioned_glyphs> shaper_shape_graphemes(
+    gstring_view text,
+    std::vector<shaper_grapheme_metrics> const& grapheme_metrics,
+    std::vector<size_t> const& display_order,
+    std::vector<size_t> const& run_ids,
+    std::vector<size_t> const& line_lengths,
+    std::vector<int8_t> const& embedding_levels)
+{
+    auto advances = std::vector<unit::pixels_f>{};
+    advances.reserve(display_order.size());
+    auto glyphs = std::vector<font_glyph_ids>{};
+    glyphs.reserve(display_order.size());
+    auto bounding_boxes = std::vector<lean_vector<aarectangle>>{};
+    bounding_boxes.reserve(display_order.size());
+
+    auto display_i = size_t{0};
+    for (auto line_length : line_lengths) {
+        assert(line_length > 0);
+
+        auto line_width = unit::pixels(0.0f);
+        auto line_whitespace_width = unit::pixels(0.0f);
+        auto num_whitespaces = size_t{0};
+
+        auto run_id = std::numeric_limits<size_t>::max();
+        auto run_start = size_t{0};
+        auto run_font_id = hi::font_id{};
+        auto run_glyphs = std::vector<glyph_id>{};
+        auto run_is_visible = false;
+        auto run_language = iso_639{};
+        auto run_script = iso_15924{};
+
+        auto shape_run = [&](size_t column) {
+            if (run_is_visible) {
+                auto const& font = get_font(run_font_id);
+
+                auto [run_glyphs, run_bounding_boxes, run_advances] = font.shape_run(run_glyphs, run_language, run_script);
+                assert(run_glyphs.size() == run_bounding_boxes.size());
+                assert(run_advances.size() == column - run_start);
+
+                glyphs.emplace_back(run_font_id, std::move(run_glyphs));
+                bounding_boxes.push_back(std::move(run_bounding_boxes));
+
+                assert(run_start + 1 <= column);
+                for (auto i = run_start + 1; i != column; ++i) {
+                    glyphs.emplace_back();
+                    bounding_boxes.emplace_back();
+                }
+
+                for (auto advance : run_advances) {
+                    advances.push_back(advance);
+                }
+
+                line_width += std::accumulate(advances.begin(), advances.end(), unit::pixels(0.0f));
+
+            } else {
+                // Whitespace does not need glyphs.
+                for (auto i = run_start; i != column; ++i) {
+                    auto const advance = grapheme_metrics[display_order[display_i + i]].advance;
+                    advances.push_back(advance);
+                    glyphs.push_back({});
+                    bounding_boxes.push_back({});
+
+                    line_whitespace_width += advance;
+                    line_width += advance;
+                }
+                num_whitespaces += column - run_start;
+            }
+        };
+
+        for (auto column = size_t{0}; column != line_length; ++column) {
+            auto const logical_i = display_order[display_i + column];
+            auto const grapheme = text[logical_i];
+            auto const metrics = grapheme_metrics[logical_i];
+
+            assert(run_id != run_ids[logical_i] or run_font_id == metrics.glyphs.font);
+            assert(run_id != run_ids[logical_i] or run_language == grapheme.language());
+            assert(run_id != run_ids[logical_i] or run_script == grapheme.script());
+
+            if (run_id != run_ids[logical_i] and run_id != std::numeric_limits<size_t>::max()) {
+                // The run has changed, shape the previous run.
+                shape_run(column);
+            }
+
+            if (run_id != run_ids[logical_i]) {
+                run_id = run_ids[logical_i];
+                run_start = column;
+                run_glyphs.clear();
+                run_is_visible = false;
+            }
+
+            // Record information about this grapheme for the next run.
+            run_font_id = metrics.glyphs.font;
+            assert(metrics.glyphs.size() != 0);
+
+            if (metrics.bracket_type != unicode_bidi_paired_bracket_type::n and
+                embedding_levels[logical_i] % 2 == 1) {
+                run_glyphs.push_back(metrics.mirrored_glyph);
+            } else {
+                run_glyphs.push_back(metrics.glyphs.front());
+            }
+
+            std::copy(metrics.glyphs.begin() + 1, metrics.glyphs.end(), std::back_inserter(run_glyphs));
+            run_is_visible |= is_visible(metrics.general_category);
+            run_language = grapheme.language();
+            run_script = grapheme.script();
+        }
+        // Shape the last run.
+        shape_run(line_length);
+
+        // XXX exclude trailing white space.
+
+        display_i += line_length;
+    }
+}
+
 /** Precalculate text-shaping before knowing actual width of the text.
  *
  * @param text The text to shape.
@@ -443,7 +556,11 @@ struct shaper_phase1_result {
  *         The text-metrics is used for the constraints of a text-widget.
  */
 [[nodiscard]] inline shaper_phase1_result shaper_phase1(
-    gstring text, unit::pixels_per_em_f font_size, text_style_set style, unit::pixels_f maximum_width, vertical_alignment alignment)
+    gstring text,
+    unit::pixels_per_em_f font_size,
+    text_style_set style,
+    unit::pixels_f maximum_width,
+    vertical_alignment alignment)
 {
     auto r = shaper_phase1_result{};
 
@@ -470,6 +587,12 @@ struct shaper_phase2_result {
     shaper_text_metrics text_metrics;
 };
 
+/** Calculate the final text-shaping.
+ *
+ * @param phase1 The pre-calculated information from phase 1.
+ * @param actual_width The actual width of the text.
+ * @return The final text-metrics and display-order.
+ */
 [[nodiscard]] inline shaper_phase2_result shaper_phase2(shaper_phase1_result const& phase1, unit::pixels_f actual_width)
 {
     auto r = shaper_phase2_result{};
@@ -480,6 +603,4 @@ struct shaper_phase2_result {
     r.display_order = shaper_display_order(r.line_lengths, phase1.embedding_levels, phase1.text);
     return r;
 }
-
-
 }
