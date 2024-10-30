@@ -429,120 +429,120 @@ struct shaper_positioned_glyphs {
     float advance = 0.0f;
 };
 
-[[nodiscard]] inline std::vector<shaper_positioned_glyphs> shaper_shape_graphemes(
-    gstring_view text,
-    std::vector<shaper_grapheme_metrics> const& grapheme_metrics,
-    std::vector<size_t> const& display_order,
-    std::vector<size_t> const& run_ids,
-    std::vector<size_t> const& line_lengths,
-    std::vector<int8_t> const& embedding_levels)
-{
-    auto advances = std::vector<unit::pixels_f>{};
-    advances.reserve(display_order.size());
-    auto glyphs = std::vector<font_glyph_ids>{};
-    glyphs.reserve(display_order.size());
-    auto bounding_boxes = std::vector<lean_vector<aarectangle>>{};
-    bounding_boxes.reserve(display_order.size());
-
-    auto display_i = size_t{0};
-    for (auto line_length : line_lengths) {
-        assert(line_length > 0);
-
-        auto line_width = unit::pixels(0.0f);
-        auto line_whitespace_width = unit::pixels(0.0f);
-        auto num_whitespaces = size_t{0};
-
-        auto run_id = std::numeric_limits<size_t>::max();
-        auto run_start = size_t{0};
-        auto run_font_id = hi::font_id{};
-        auto run_glyphs = std::vector<glyph_id>{};
-        auto run_is_visible = false;
-        auto run_language = iso_639{};
-        auto run_script = iso_15924{};
-
-        auto shape_run = [&](size_t column) {
-            if (run_is_visible) {
-                auto const& font = get_font(run_font_id);
-
-                auto [run_glyphs, run_bounding_boxes, run_advances] = font.shape_run(run_glyphs, run_language, run_script);
-                assert(run_glyphs.size() == run_bounding_boxes.size());
-                assert(run_advances.size() == column - run_start);
-
-                glyphs.emplace_back(run_font_id, std::move(run_glyphs));
-                bounding_boxes.push_back(std::move(run_bounding_boxes));
-
-                assert(run_start + 1 <= column);
-                for (auto i = run_start + 1; i != column; ++i) {
-                    glyphs.emplace_back();
-                    bounding_boxes.emplace_back();
-                }
-
-                for (auto advance : run_advances) {
-                    advances.push_back(advance);
-                }
-
-                line_width += std::accumulate(advances.begin(), advances.end(), unit::pixels(0.0f));
-
-            } else {
-                // Whitespace does not need glyphs.
-                for (auto i = run_start; i != column; ++i) {
-                    auto const advance = grapheme_metrics[display_order[display_i + i]].advance;
-                    advances.push_back(advance);
-                    glyphs.push_back({});
-                    bounding_boxes.push_back({});
-
-                    line_whitespace_width += advance;
-                    line_width += advance;
-                }
-                num_whitespaces += column - run_start;
-            }
-        };
-
-        for (auto column = size_t{0}; column != line_length; ++column) {
-            auto const logical_i = display_order[display_i + column];
-            auto const grapheme = text[logical_i];
-            auto const metrics = grapheme_metrics[logical_i];
-
-            assert(run_id != run_ids[logical_i] or run_font_id == metrics.glyphs.font);
-            assert(run_id != run_ids[logical_i] or run_language == grapheme.language());
-            assert(run_id != run_ids[logical_i] or run_script == grapheme.script());
-
-            if (run_id != run_ids[logical_i] and run_id != std::numeric_limits<size_t>::max()) {
-                // The run has changed, shape the previous run.
-                shape_run(column);
-            }
-
-            if (run_id != run_ids[logical_i]) {
-                run_id = run_ids[logical_i];
-                run_start = column;
-                run_glyphs.clear();
-                run_is_visible = false;
-            }
-
-            // Record information about this grapheme for the next run.
-            run_font_id = metrics.glyphs.font;
-            assert(metrics.glyphs.size() != 0);
-
-            if (metrics.bracket_type != unicode_bidi_paired_bracket_type::n and
-                embedding_levels[logical_i] % 2 == 1) {
-                run_glyphs.push_back(metrics.mirrored_glyph);
-            } else {
-                run_glyphs.push_back(metrics.glyphs.front());
-            }
-
-            std::copy(metrics.glyphs.begin() + 1, metrics.glyphs.end(), std::back_inserter(run_glyphs));
-            run_is_visible |= is_visible(metrics.general_category);
-            run_language = grapheme.language();
-            run_script = grapheme.script();
-        }
-        // Shape the last run.
-        shape_run(line_length);
-
-        // XXX exclude trailing white space.
-
-        display_i += line_length;
-    }
-}
+//[[nodiscard]] inline std::vector<shaper_positioned_glyphs> shaper_shape_graphemes(
+//    gstring_view text,
+//    std::vector<shaper_grapheme_metrics> const& grapheme_metrics,
+//    std::vector<size_t> const& display_order,
+//    std::vector<size_t> const& run_ids,
+//    std::vector<size_t> const& line_lengths,
+//    std::vector<int8_t> const& embedding_levels)
+//{
+//    auto advances = std::vector<unit::pixels_f>{};
+//    advances.reserve(display_order.size());
+//    auto glyphs = std::vector<font_glyph_ids>{};
+//    glyphs.reserve(display_order.size());
+//    auto bounding_boxes = std::vector<lean_vector<aarectangle>>{};
+//    bounding_boxes.reserve(display_order.size());
+//
+//    auto display_i = size_t{0};
+//    for (auto line_length : line_lengths) {
+//        assert(line_length > 0);
+//
+//        auto line_width = unit::pixels(0.0f);
+//        auto line_whitespace_width = unit::pixels(0.0f);
+//        auto num_whitespaces = size_t{0};
+//
+//        auto run_id = std::numeric_limits<size_t>::max();
+//        auto run_start = size_t{0};
+//        auto run_font_id = hi::font_id{};
+//        auto run_glyphs = std::vector<glyph_id>{};
+//        auto run_is_visible = false;
+//        auto run_language = iso_639{};
+//        auto run_script = iso_15924{};
+//
+//        auto shape_run = [&](size_t column) {
+//            if (run_is_visible) {
+//                auto const& font = get_font(run_font_id);
+//
+//                auto [run_glyphs, run_bounding_boxes, run_advances] = font.shape_run(run_glyphs, run_language, run_script);
+//                assert(run_glyphs.size() == run_bounding_boxes.size());
+//                assert(run_advances.size() == column - run_start);
+//
+//                glyphs.emplace_back(run_font_id, std::move(run_glyphs));
+//                bounding_boxes.push_back(std::move(run_bounding_boxes));
+//
+//                assert(run_start + 1 <= column);
+//                for (auto i = run_start + 1; i != column; ++i) {
+//                    glyphs.emplace_back();
+//                    bounding_boxes.emplace_back();
+//                }
+//
+//                for (auto advance : run_advances) {
+//                    advances.push_back(advance);
+//                }
+//
+//                line_width += std::accumulate(advances.begin(), advances.end(), unit::pixels(0.0f));
+//
+//            } else {
+//                // Whitespace does not need glyphs.
+//                for (auto i = run_start; i != column; ++i) {
+//                    auto const advance = grapheme_metrics[display_order[display_i + i]].advance;
+//                    advances.push_back(advance);
+//                    glyphs.push_back({});
+//                    bounding_boxes.push_back({});
+//
+//                    line_whitespace_width += advance;
+//                    line_width += advance;
+//                }
+//                num_whitespaces += column - run_start;
+//            }
+//        };
+//
+//        for (auto column = size_t{0}; column != line_length; ++column) {
+//            auto const logical_i = display_order[display_i + column];
+//            auto const grapheme = text[logical_i];
+//            auto const metrics = grapheme_metrics[logical_i];
+//
+//            assert(run_id != run_ids[logical_i] or run_font_id == metrics.glyphs.font);
+//            assert(run_id != run_ids[logical_i] or run_language == grapheme.language());
+//            assert(run_id != run_ids[logical_i] or run_script == grapheme.script());
+//
+//            if (run_id != run_ids[logical_i] and run_id != std::numeric_limits<size_t>::max()) {
+//                // The run has changed, shape the previous run.
+//                shape_run(column);
+//            }
+//
+//            if (run_id != run_ids[logical_i]) {
+//                run_id = run_ids[logical_i];
+//                run_start = column;
+//                run_glyphs.clear();
+//                run_is_visible = false;
+//            }
+//
+//            // Record information about this grapheme for the next run.
+//            run_font_id = metrics.glyphs.font;
+//            assert(metrics.glyphs.size() != 0);
+//
+//            if (metrics.bracket_type != unicode_bidi_paired_bracket_type::n and
+//                embedding_levels[logical_i] % 2 == 1) {
+//                run_glyphs.push_back(metrics.mirrored_glyph);
+//            } else {
+//                run_glyphs.push_back(metrics.glyphs.front());
+//            }
+//
+//            std::copy(metrics.glyphs.begin() + 1, metrics.glyphs.end(), std::back_inserter(run_glyphs));
+//            run_is_visible |= is_visible(metrics.general_category);
+//            run_language = grapheme.language();
+//            run_script = grapheme.script();
+//        }
+//        // Shape the last run.
+//        shape_run(line_length);
+//
+//        // XXX exclude trailing white space.
+//
+//        display_i += line_length;
+//    }
+//}
 
 /** Precalculate text-shaping before knowing actual width of the text.
  *

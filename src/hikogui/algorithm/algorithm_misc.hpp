@@ -373,9 +373,9 @@ DataIt back_strip(DataIt data_first, DataIt data_last, ValueIt value_first, Valu
 
 /** The fast lower bound algorithm.
  *
+ * @tparam Endian The endianess of the key in the table.
  * @tparam T The type of the table element.
  * @tparam Key The type of the key
- * @tparam Endian The endianess of the key in the table.
  * @param table A span of elements to search, the key is in the first bytes of each element.
  * @param key A unsigned integral to search in the elements.
  * @return A pointer to the entry found,or nullptr if not found.

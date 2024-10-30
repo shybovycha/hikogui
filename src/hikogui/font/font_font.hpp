@@ -50,12 +50,6 @@ public:
     font_weight weight = font_weight::regular;
     float optical_size = 12.0;
 
-    /** A optimized character map.
-     *
-     * This character map is always available even if the font is not loaded.
-     */
-    font_char_map char_map;
-
     /** A string representing the features of a font.
      * This will be a comma separated list of features, mostly tables like 'kern' and 'GPOS'.
      */
@@ -64,10 +58,6 @@ public:
     /** The metrics of a font.
      */
     font_metrics_em metrics;
-
-    /** List of fonts to use as a fallback for this font.
-     */
-    std::vector<hi::font_id> fallback_chain;
 
     font() = default;
     virtual ~font() = default;
@@ -85,10 +75,7 @@ public:
     /** Get the glyph for a code-point.
      * @return glyph-id, or invalid when not found or error.
      */
-    [[nodiscard]] glyph_id find_glyph(char32_t c) const noexcept
-    {
-        return char_map.find(c);
-    }
+    [[nodiscard]] virtual glyph_id find_glyph(char32_t c) const noexcept = 0;
 
     /** Get the glyphs for a grapheme.
      * 

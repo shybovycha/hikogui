@@ -114,7 +114,7 @@ public:
      * @note Each time `start_access_through_sandbox()` is called
      *       it should be balanced with `stop_access_through_sandbox()`.
      */
-    [[nodiscard]] void stop_access_through_sandbox() const;
+    void stop_access_through_sandbox() const;
 
     /** The bookmark is empty.
      */

@@ -8,6 +8,7 @@
 #include "otype_utilities.hpp"
 #include "otype_sfnt.hpp"
 #include "otype_cmap.hpp"
+#include "otype_cmap_find.hpp"
 #include "otype_glyf.hpp"
 #include "otype_head.hpp"
 #include "otype_hhea.hpp"
@@ -57,6 +58,12 @@ public:
     [[nodiscard]] bool loaded() const noexcept override
     {
         return to_bool(_view);
+    }
+
+    [[nodiscard]] glyph_id find_glyph(char32_t c) const noexcept override
+    {
+        load_view();
+        return otype_cmap_find(_cmap_table_bytes, c);
     }
 
     [[nodiscard]] graphic_path get_path(hi::glyph_id glyph_id) const override
@@ -176,6 +183,7 @@ private:
     mutable std::span<std::byte const> _hmtx_table_bytes;
     mutable std::span<std::byte const> _kern_table_bytes;
     mutable std::span<std::byte const> _GSUB_table_bytes;
+    mutable std::span<std::byte const> _cmap_table_bytes;
     bool _loca_is_offset32;
 
     void cache_tables(std::span<std::byte const> bytes) const
@@ -183,6 +191,7 @@ private:
         _loca_table_bytes = otype_sfnt_search<"loca">(bytes);
         _glyf_table_bytes = otype_sfnt_search<"glyf">(bytes);
         _hmtx_table_bytes = otype_sfnt_search<"hmtx">(bytes);
+        _cmap_table_bytes = otype_sfnt_search<"cmap">(bytes);
 
         // Optional tables.
         _kern_table_bytes = otype_sfnt_search<"kern">(bytes);
@@ -233,12 +242,6 @@ private:
             _num_horizontal_metrics = hhea.number_of_h_metrics;
         }
 
-        if (auto cmap_bytes = otype_sfnt_search<"cmap">(bytes); not cmap_bytes.empty()) {
-            char_map = otype_cmap_parse(cmap_bytes);
-        } else {
-            throw parse_error("Could not find 'cmap'");
-        }
-
         if (auto os2_bytes = otype_sfnt_search<"OS/2">(bytes); not os2_bytes.empty()) {
             auto os2 = otype_parse_os2(os2_bytes, _em_scale);
             weight = os2.weight;
@@ -250,65 +253,60 @@ private:
             OS2_cap_height = os2.cap_height;
         }
 
+        // Tables need to be cached, before querying them. Such as the
+        // find_glyph() function below.
         cache_tables(bytes);
 
         // Parsing the weight, italic and other features from the sub-family-name
         // is much more reliable than the explicit data in the OS/2 table.
         // Only use the OS/2 data as a last resort.
-        // clang-format off
-    auto name_lower = to_lower(family_name + " " + sub_family_name);
-    if (name_lower.find("italic") != std::string::npos) {
-        style = font_style::italic;
-    }
+        auto name_lower = to_lower(family_name + " " + sub_family_name);
+        if (name_lower.find("italic") != std::string::npos) {
+            style = font_style::italic;
+        }
 
-    if (name_lower.find("oblique") != std::string::npos) {
-        style = font_style::oblique;
-    }
+        if (name_lower.find("oblique") != std::string::npos) {
+            style = font_style::oblique;
+        }
 
-    if (name_lower.find("condensed") != std::string::npos) {
-        condensed = true;
-    }
+        if (name_lower.find("condensed") != std::string::npos) {
+            condensed = true;
+        }
 
-    if (name_lower.find("mono") != std::string::npos or
-        name_lower.find("console") != std::string::npos or
-        name_lower.find("code") != std::string::npos ) {
-        monospace = true;
-    }
+        if (name_lower.find("mono") != std::string::npos or name_lower.find("console") != std::string::npos or
+            name_lower.find("code") != std::string::npos) {
+            monospace = true;
+        }
 
-    if (name_lower.find("sans") != std::string::npos) {
-        serif = false;
-    } else if (name_lower.find("serif") != std::string::npos) {
-        serif = true;
-    }
+        if (name_lower.find("sans") != std::string::npos) {
+            serif = false;
+        } else if (name_lower.find("serif") != std::string::npos) {
+            serif = true;
+        }
 
-    if (name_lower.find("regular") != std::string::npos or
-        name_lower.find("medium") != std::string::npos) {
-        weight = font_weight::regular;
-    } else if (
-        name_lower.find("extra light") != std::string::npos or
-        name_lower.find("extra-light") != std::string::npos or
-        name_lower.find("extralight") != std::string::npos) {
-        weight = font_weight::extra_light;
-    } else if (
-        name_lower.find("extra black") != std::string::npos or
-        name_lower.find("extra-black") != std::string::npos or
-        name_lower.find("extrablack") != std::string::npos) {
-        weight = font_weight::extra_black;
-    } else if (
-        name_lower.find("extra bold") != std::string::npos or
-        name_lower.find("extra-bold") != std::string::npos or
-        name_lower.find("extrabold") != std::string::npos) {
-        weight = font_weight::extra_bold;
-    } else if (name_lower.find("thin") != std::string::npos) {
-        weight = font_weight::thin;
-    } else if (name_lower.find("light") != std::string::npos) {
-        weight = font_weight::light;
-    } else if (name_lower.find("bold") != std::string::npos) {
-        weight = font_weight::bold;
-    } else if (name_lower.find("black") != std::string::npos) {
-        weight = font_weight::black;
-    }
-        // clang-format on
+        if (name_lower.find("regular") != std::string::npos or name_lower.find("medium") != std::string::npos) {
+            weight = font_weight::regular;
+        } else if (
+            name_lower.find("extra light") != std::string::npos or name_lower.find("extra-light") != std::string::npos or
+            name_lower.find("extralight") != std::string::npos) {
+            weight = font_weight::extra_light;
+        } else if (
+            name_lower.find("extra black") != std::string::npos or name_lower.find("extra-black") != std::string::npos or
+            name_lower.find("extrablack") != std::string::npos) {
+            weight = font_weight::extra_black;
+        } else if (
+            name_lower.find("extra bold") != std::string::npos or name_lower.find("extra-bold") != std::string::npos or
+            name_lower.find("extrabold") != std::string::npos) {
+            weight = font_weight::extra_bold;
+        } else if (name_lower.find("thin") != std::string::npos) {
+            weight = font_weight::thin;
+        } else if (name_lower.find("light") != std::string::npos) {
+            weight = font_weight::light;
+        } else if (name_lower.find("bold") != std::string::npos) {
+            weight = font_weight::bold;
+        } else if (name_lower.find("black") != std::string::npos) {
+            weight = font_weight::black;
+        }
 
         // Figure out the features.
         features.clear();
