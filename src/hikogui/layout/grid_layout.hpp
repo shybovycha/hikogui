@@ -1090,7 +1090,7 @@ private:
     cell_vector _cells = {};
     size_t _num_rows = 0;
     size_t _num_columns = 0;
-    mutable vertical_alignment _alignment = vertical_alignment::none;
+    mutable vertical_alignment _alignment = vertical_alignment::top;
     mutable detail::grid_layout_axis_constraints<axis::y, value_type> _row_constraints = {};
     mutable detail::grid_layout_axis_constraints<axis::x, value_type> _column_constraints = {};
 

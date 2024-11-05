@@ -62,10 +62,7 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
         return std::nullopt;
     }
 
-    if (*it == "none") {
-        ++it;
-        return horizontal_alignment::none;
-    } else if (*it == "flush") {
+    if (*it == "flush") {
         ++it;
         return horizontal_alignment::flush;
     } else if (*it == "left") {
@@ -94,10 +91,7 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
         return std::nullopt;
     }
 
-    if (*it == "none") {
-        ++it;
-        return vertical_alignment::none;
-    } else if (*it == "top") {
+    if (*it == "top") {
         ++it;
         return vertical_alignment::top;
     } else if (*it == "middle") {

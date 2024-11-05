@@ -363,8 +363,6 @@ public:
                 return haystack.right() - needle.width();
             case horizontal_alignment::center:
                 return haystack.center() - needle_half_width;
-            case horizontal_alignment::none:
-                std::unreachable();
             }
             std::unreachable();
         }();
