@@ -7,7 +7,6 @@
 #include "font_font.hpp"
 #include "otype_utilities.hpp"
 #include "otype_sfnt.hpp"
-#include "otype_cmap.hpp"
 #include "otype_cmap_find.hpp"
 #include "otype_glyf.hpp"
 #include "otype_head.hpp"
