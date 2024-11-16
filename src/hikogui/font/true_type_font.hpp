@@ -17,6 +17,7 @@
 #include "otype_maxp.hpp"
 #include "otype_name.hpp"
 #include "otype_os2.hpp"
+#include "otype_GSUB.hpp"
 #include "font_char_map.hpp"
 #include "../file/file_view.hpp"
 #include "../graphic_path/graphic_path.hpp"

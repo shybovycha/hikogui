@@ -10,7 +10,7 @@
 
 hi_export_module(hikogui.font : otype_class_definition_table);
 
-hi_export namespace hi { inline namespace v1 {
+hi_export namespace hi::inline v1 {
 
 [[nodiscard]] inline uint16_t otype_class_definition_table_search_format1(std::span<std::byte const> bytes, glyph_id id)
 {
@@ -26,13 +26,15 @@ hi_export namespace hi { inline namespace v1 {
 
     auto const glyph_count = *header.glyph_count;
     auto const start_glyph_id = *header.start_glyph_id;
-    auto const end_glyph_id = *header.start_glyph_id + glyph_count;
 
-    if (glyph_id < start_glyph_id or glyph_id >= end_glyph_id) {
+    if (id < start_glyph_id) {
         return 0;
     }
 
-    auto const index = glyph_id - start_glyph_id;
+    auto const index = id.value() - start_glyph_id;
+    if (index >= glyph_count) {
+        return 0;
+    }
     auto const class_values = implicit_cast<big_uint16_buf_t>(offset, bytes, glyph_count);
     return *class_values[index];
 }

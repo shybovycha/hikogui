@@ -104,7 +104,7 @@ public:
      * @param value A value or observer-value used as a representation of the state.
      */
     template<forward_of<observer<value_type>> Value>
-    explicit default_text_delegate(Value&& value) : get_text(std::forward<Value>(value))
+    explicit default_text_delegate(Value&& value) : _value(std::forward<Value>(value))
     {
         _value_cbt = _value.subscribe([&](auto...) {
             this->_notifier();
@@ -141,7 +141,7 @@ public:
      * @param value A value or observer-value used as a representation of the state.
      */
     template<forward_of<observer<value_type>> Value>
-    explicit default_text_delegate(Value&& value) : get_text(std::forward<Value>(value))
+    explicit default_text_delegate(Value&& value) : _value(std::forward<Value>(value))
     {
         _value_cbt = _value.subscribe([&](auto...) {
             this->_notifier();
@@ -235,7 +235,7 @@ public:
      * @param value A value or observer-value used as a representation of the state.
      */
     template<forward_of<observer<value_type>> Value>
-    explicit default_text_delegate(Value&& value) : get_text(std::forward<Value>(value))
+    explicit default_text_delegate(Value&& value) : _value(std::forward<Value>(value))
     {
         _value_cbt = _value.subscribe([&](auto...) {
             this->_notifier();

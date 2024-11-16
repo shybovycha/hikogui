@@ -1310,11 +1310,14 @@ constexpr std::pair<It, std::vector<unicode_bidi_class>> unicode_bidi(
  * @param last An iterator pointing one beyond the last character
  * @param get_code_point A function to get the starting code-point of a
  *                       character.
+ * @param direction_mode The default direction mode to use.
+ *                       This can be L, R or B (auto).
  * @return A vector with the embedding levels for each character, followed by
  *         the embedding levels for each paragraph.
  */
 template<std::forward_iterator It, std::invocable<std::iter_value_t<It>> GetCodePoint>
-[[nodiscard]] std::vector<int8_t> unicode_bidi_get_embedding_levels(It first, It last, GetCodePoint const& get_code_point)
+[[nodiscard]] std::vector<int8_t>
+unicode_bidi_get_embedding_levels(It first, It last, unicode_bidi_class direction_mode, GetCodePoint const& get_code_point)
 {
     auto proxy = detail::unicode_bidi_char_info_vector{};
     proxy.reserve(std::distance(first, last));
@@ -1325,7 +1328,9 @@ template<std::forward_iterator It, std::invocable<std::iter_value_t<It>> GetCode
     }
 
     auto context = unicode_bidi_context{};
-    context.direction_mode = unicode_bidi_context::mode_type::auto_LTR;
+    context.direction_mode = direction_mode == hi::unicode_bidi_class::L ? hi::unicode_bidi_context::mode_type::LTR :
+        direction_mode == hi::unicode_bidi_class::R                      ? hi::unicode_bidi_context::mode_type::RTL :
+                                                                           hi::unicode_bidi_context::mode_type::auto_LTR;
     context.enable_line_separator = false;
     context.enable_mirrored_brackets = false;
     context.remove_explicit_embeddings = false;
@@ -1345,8 +1350,9 @@ template<std::forward_iterator It, std::invocable<std::iter_value_t<It>> GetCode
 }
 
 template<std::random_access_iterator EmbeddingLevelIt, std::random_access_iterator TextIt, typename GetBidiClass>
-[[nodiscard]] inline std::vector<int8_t> unicode_bidi_L1(std::vector<size_t> const& line_sizes,
-EmbeddingLevelIt embedding_levels_first,
+[[nodiscard]] inline std::vector<int8_t> unicode_bidi_L1(
+    std::vector<size_t> const& line_sizes,
+    EmbeddingLevelIt embedding_levels_first,
     TextIt text_first,
     GetBidiClass const& get_bidi_class) requires std::is_same_v<std::iter_value_t<EmbeddingLevelIt>, int8_t> and
     std::is_invocable_r_v<unicode_bidi_class, GetBidiClass, std::iter_value_t<TextIt>>
@@ -1381,9 +1387,13 @@ EmbeddingLevelIt embedding_levels_first,
                 std::fill(r_ws_start, r_it + 1, paragraph_level);
                 ++paragraph_level_it;
 
-            } else if (bc != WS and bc != FSI and bc != LRI and bc != RLI and bc != PDI and bc != WS) {
+            } else if (
+                bc != WS and bc != FSI and bc != LRI and bc != RLI and bc != PDI and bc != WS and bc != RLE and bc != LRE and
+                bc != RLO and bc != LRO and bc != PDF and bc != BN) {
                 // Any non-white-space character resets the start of the
                 // white-space. To one character beyond.
+                // Also include the explicit embedding characters, since they
+                // are supposed to be ignored according to X9.
                 r_ws_start = r_it + 1;
             }
         }
@@ -1395,7 +1405,8 @@ EmbeddingLevelIt embedding_levels_first,
     return r;
 }
 
-[[nodiscard]] inline std::vector<size_t> unicode_bidi_L2(std::vector<size_t> const& line_sizes, std::vector<int8_t> embedding_levels)
+[[nodiscard]] inline std::vector<size_t>
+unicode_bidi_L2(std::vector<size_t> const& line_sizes, std::vector<int8_t> embedding_levels)
 {
     auto const text_size = embedding_levels.size();
 

@@ -65,7 +65,7 @@ struct shaper_run_indices {
  * @param run_lengths The number of graphemes in each run.
  * @return A vector of run identifiers, one for each grapheme in logical order.
  */
-[[nodiscard]] std::vector<size_t> shaper_make_run_ids(std::vector<size_t> const& run_lengths)
+[[nodiscard]] inline std::vector<size_t> shaper_make_run_ids(std::vector<size_t> const& run_lengths)
 {
     auto size = std::accumulate(run_lengths.begin(), run_lengths.end(), size_t{0});
 
@@ -183,7 +183,7 @@ struct shaper_grapheme_metrics {
 
 [[nodiscard]] inline std::vector<int8_t> shaper_collect_embedding_levels(gstring_view text)
 {
-    return unicode_bidi_get_embedding_levels(text.begin(), text.end(), [](auto const& g) {
+    return unicode_bidi_get_embedding_levels(text.begin(), text.end(), unicode_bidi_class::B, [](auto const& g) {
         return g.starter();
     });
 }

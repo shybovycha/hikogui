@@ -9,6 +9,7 @@
 #include "otype_feature_list.hpp"
 #include "otype_lookup_list.hpp"
 #include "otype_coverage.hpp"
+#include "otype_class_definition_table.hpp"
 #include "../i18n/i18n.hpp"
 #include "../geometry/geometry.hpp"
 #include "../parser/parser.hpp"
@@ -28,7 +29,7 @@ enum class otype_GDEF_glyph_class : uint16_t {
 };
 
 enum class otype_GDEF_table {
-    glyph_class_def
+    glyph_class_def,
     attach_list,
     lig_caret_list,
     mark_attach_class_def,
@@ -72,6 +73,7 @@ template<otype_GDEF_table table>
         }
         auto const mark_glyph_set_offset = implicit_cast<big_uint16_buf_t>(offset, bytes);
         return bytes.subspan(gsl::narrow_cast<size_t>(*mark_glyph_set_offset) * 2);
+
     } else {
         static_assert(false, "Unknown GDEF table");
     }
@@ -101,26 +103,23 @@ template<otype_GDEF_table table>
         big_uint16_buf_t device_table_offset;
     };
 
-    auto const caret_value_format = implicit_cast<big_uint16_buf_t>(caret_value_bytes);
+    auto const caret_value_format = implicit_cast<big_uint16_buf_t>(bytes);
     switch (*caret_value_format) {
     case 1:
-        auto const caret_value = implicit_cast<caret_value_type1>(caret_value_bytes);
-        return caret_value.coordinate;
+        return *implicit_cast<caret_value_type1>(bytes).coordinate;
 
     case 2:
-        auto const caret_value = implicit_cast<caret_value_type2>(caret_value_bytes);
-        return caret_value.caret_value_point_index;
+        return *implicit_cast<caret_value_type2>(bytes).caret_value_point_index;
 
     case 3:
-        auto const caret_value = implicit_cast<caret_value_type3>(caret_value_bytes);
-        return caret_value.coordinate;
+        return *implicit_cast<caret_value_type3>(bytes).coordinate;
 
     default:
         throw otype_file_error("caret value format not supported");
     }
 }
 
-[[nodiscard]] inline std::generator<std::variant<int16_t,uint16_t>> otype_GDEF_lig_glyph_search(std::span<std::byte const> bytes)
+[[nodiscard]] inline generator<std::variant<int16_t,uint16_t>> otype_GDEF_lig_glyph_search(std::span<std::byte const> bytes)
 {
     struct lig_glyph_type {
         big_uint16_buf_t caret_count;
@@ -134,40 +133,39 @@ template<otype_GDEF_table table>
     r.reserve(*lig_glyph.caret_count);
 
     for (auto const caret_value_offset : caret_value_offsets) {
-        auto const caret_value_bytes = bytes.subspan(gsl::narrow_cast<size_t>(caret_value_offset) * 2);
+        auto const caret_value_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*caret_value_offset) * 2);
         co_yield otype_GDEF_caret_value(caret_value_bytes);
     }
-    return r;
 }
 
 
-[[nodiscard]] inline std::generator<std::variant<int16_t,uint16_t>> otype_GDEF_lig_caret_list_search(std::span<std::byte const> bytes, glyph_id id)
+[[nodiscard]] inline generator<std::variant<int16_t,uint16_t>> otype_GDEF_lig_caret_list_search(std::span<std::byte const> bytes, glyph_id id)
 {
-    struct lig_caret_list_type {
+    struct header_type {
         big_uint16_buf_t coverage_offset;
         big_uint16_buf_t lig_glyph_count;
     };
 
     auto offset = size_t{0};
-    auto const lig_caret_list_header = implicit_cast<lig_caret_list_type>(offset, lig_caret_list_bytes);
+    auto const header = implicit_cast<header_type>(offset, bytes);
 
-    auto const coverage_bytes = lig_caret_list_bytes.subspan(gsl::narrow_cast<size_t>(*lig_caret_list_header.coverage_offset) * 2);
+    auto const coverage_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*header.coverage_offset) * 2);
 
     auto const coverage_index = otype_coverage_search(coverage_bytes, id);
-    if (not coverage_index) {
+    if (not coverage_index or *coverage_index >= *header.lig_glyph_count) {
         co_return;
     }
 
-    auto const lig_glyph_offsets = implicit_cast<big_uint16_buf_t>(offset, lig_caret_list_bytes, *lig_caret_list_header.lig_glyph_count);
-    auto const lig_glyph_offset = *lig_caret_offsets.at(*coverage_index);
-    auto const lig_glyph_bytes = lig_caret_list_bytes.subspan(gsl::narrow_cast<size_t>(lig_glyph_offset) * 2);
+    auto const lig_glyph_offsets = implicit_cast<big_uint16_buf_t>(offset, bytes, *header.lig_glyph_count);
+    auto const lig_glyph_offset = *lig_glyph_offsets[*coverage_index];
+    auto const lig_glyph_bytes = bytes.subspan(gsl::narrow_cast<size_t>(lig_glyph_offset) * 2);
 
     for (auto const caret_value : otype_GDEF_lig_glyph_search(lig_glyph_bytes)) {
         co_yield caret_value;
     }
 }
 
-[[nodiscard]] inline std::generator<std::variant<int16_t,uint16_t>> otype_GDEF_search_lig_caret(std::span<std::byte const> bytes, glyph_id id)
+[[nodiscard]] inline generator<std::variant<int16_t,uint16_t>> otype_GDEF_search_lig_caret(std::span<std::byte const> bytes, glyph_id id)
 {
     auto const lig_caret_list_bytes = otype_GDEF_get_table<otype_GDEF_table::lig_caret_list>(bytes);
     return otype_GDEF_lig_caret_list_search(lig_caret_list_bytes, id);
@@ -269,7 +267,7 @@ otype_GDEF_filter_glyph(std::span<std::byte const> bytes, glyph_id id, size_t in
     if (to_bool(lookup_flag_ & otype_lookup_flag::ignore_ligatures) and glyph_class == otype_GDEF_glyph_class::ligature) {
         return true;
     }
-    if (to_bool(lookup_flag_ & otype_GSUB_lookup_flag::use_mark_filtering_set) and glyph_class == otype_GDEF_glyph_class::mark) {
+    if (to_bool(lookup_flag_ & otype_lookup_flag::use_mark_filtering_set) and glyph_class == otype_GDEF_glyph_class::mark) {
         if (not otype_GDEF_search_mark_glyph(bytes, mark_filtering_set, id)) {
             // Skip all marks that are not in the mark filtering set.
             return true;

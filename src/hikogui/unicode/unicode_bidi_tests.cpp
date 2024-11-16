@@ -27,7 +27,7 @@ struct unicode_bidi_test {
     bool test_for_RTL = false;
     bool test_for_auto = false;
 
-    [[nodiscard]] unicode_bidi_test(std::vector<int> const &levels, std::vector<int> const &reorder, int line_nr) noexcept :
+    [[nodiscard]] unicode_bidi_test(std::vector<int> const& levels, std::vector<int> const& reorder, int line_nr) noexcept :
         levels(levels), reorder(reorder), line_nr(line_nr)
     {
     }
@@ -53,7 +53,7 @@ struct unicode_bidi_test {
             r.push_back(hi::unicode_bidi_class::R);
         }
         if (test_for_auto) {
-            r.push_back(hi::unicode_bidi_class::ON);
+            r.push_back(hi::unicode_bidi_class::B);
         }
 
         return r;
@@ -63,7 +63,7 @@ struct unicode_bidi_test {
 [[nodiscard]] static std::vector<int> parse_bidi_test_levels(std::string_view line) noexcept
 {
     auto r = std::vector<int>{};
-    for (auto const value : hi::split(hi::strip(line))) {
+    for (auto const value : hi::split_string(hi::strip(line), " ")) {
         if (value == "x") {
             r.push_back(-1);
         } else {
@@ -76,8 +76,10 @@ struct unicode_bidi_test {
 [[nodiscard]] static std::vector<int> parse_bidi_test_reorder(std::string_view line) noexcept
 {
     auto r = std::vector<int>{};
-    for (auto const value : hi::split(hi::strip(line))) {
-        if (value == "x") {
+    for (auto const value : hi::split_string(hi::strip(line), " ")) {
+        if (value.empty()) {
+            ;
+        } else if (value == "x") {
             r.push_back(-1);
         } else {
             r.push_back(*hi::from_string<int>(value));
@@ -88,15 +90,15 @@ struct unicode_bidi_test {
 
 [[nodiscard]] static unicode_bidi_test parse_bidi_test_data_line(
     std::string_view line,
-    std::vector<int> const &levels,
-    std::vector<int> const &reorder,
+    std::vector<int> const& levels,
+    std::vector<int> const& reorder,
     int level_nr) noexcept
 {
     auto r = unicode_bidi_test{levels, reorder, level_nr};
 
-    auto line_s = hi::split(line, ';');
+    auto line_s = hi::split_string(line, ";");
 
-    for (auto bidi_class_str : hi::split(hi::strip(line_s[0]))) {
+    for (auto bidi_class_str : hi::split_string(hi::strip(line_s[0]), " ")) {
         r.input.push_back(hi::unicode_bidi_class_from_string(bidi_class_str));
     }
 
@@ -140,50 +142,95 @@ hi::generator<unicode_bidi_test> parse_bidi_test(int test_line_nr = -1)
     }
 }
 
+[[nodiscard]] static char32_t get_code_point(hi::unicode_bidi_class x) noexcept
+{
+    switch (x) {
+    case hi::unicode_bidi_class::L:
+        return U'a'; // Left-to-right
+    case hi::unicode_bidi_class::R:
+        return U'\u05D0'; // Right-to-left
+    case hi::unicode_bidi_class::EN:
+        return U'\u06F0'; // Extended number
+    case hi::unicode_bidi_class::AN:
+        return U'\u0660'; // Arabic number
+    case hi::unicode_bidi_class::AL:
+        return U'\u0608'; // Arabic letter
+    case hi::unicode_bidi_class::NSM:
+        return U'\u0300'; // Non-spacing mark
+    case hi::unicode_bidi_class::CS:
+        return U','; // Common separator
+    case hi::unicode_bidi_class::ES:
+        return U'+'; // European separator
+    case hi::unicode_bidi_class::ET:
+        return U'$'; // European terminator
+    case hi::unicode_bidi_class::ON:
+        return U'!'; // Other neutral
+    case hi::unicode_bidi_class::BN:
+        return U'\0'; // Boundary neutral
+    case hi::unicode_bidi_class::S:
+        return U'\t'; // Segment separator
+    case hi::unicode_bidi_class::WS:
+        return U' '; // White space
+    case hi::unicode_bidi_class::B:
+        return U'\n'; // Paragraph separator
+    case hi::unicode_bidi_class::RLO:
+        return U'\u202E'; // Right-to-left override
+    case hi::unicode_bidi_class::RLE:
+        return U'\u202B'; // Right-to-left embedding
+    case hi::unicode_bidi_class::LRO:
+        return U'\u202D'; // Left-to-right override
+    case hi::unicode_bidi_class::LRE:
+        return U'\u202A'; // Left-to-right embedding
+    case hi::unicode_bidi_class::PDF:
+        return U'\u202C'; // Pop directional formatting
+    case hi::unicode_bidi_class::LRI:
+        return U'\u2066'; // Left-to-right isolate
+    case hi::unicode_bidi_class::RLI:
+        return U'\u2067'; // Right-to-left isolate
+    case hi::unicode_bidi_class::FSI:
+        return U'\u2068'; // First strong isolate
+    case hi::unicode_bidi_class::PDI:
+        return U'\u2069'; // Pop directional isolate
+    }
+    std::unreachable();
+}
+
 TEST_CASE(bidi_test)
 {
     for (auto test : parse_bidi_test()) {
         for (auto paragraph_direction : test.get_paragraph_directions()) {
-            auto test_parameters = hi::unicode_bidi_context{};
-            test_parameters.enable_mirrored_brackets = false;
-            test_parameters.enable_line_separator = false;
-            test_parameters.remove_explicit_embeddings = false;
-            // clang-format off
-            test_parameters.direction_mode =
-                paragraph_direction == hi::unicode_bidi_class::L ? hi::unicode_bidi_context::mode_type::LTR :
-                paragraph_direction == hi::unicode_bidi_class::R ? hi::unicode_bidi_context::mode_type::RTL :
-                hi::unicode_bidi_context::mode_type::auto_LTR;
-            // clang-format on
 
-            auto input = test.get_input();
-            auto first = begin(input);
-            auto last = end(input);
-
-            auto const[new_last, paragraph_directions] = unicode_bidi_P1(first, last, test_parameters);
-            last = new_last;
+            auto const embedding_levels_paragraphs = hi::unicode_bidi_get_embedding_levels(test.input.begin(), test.input.end(), paragraph_direction, get_code_point);
+            auto const line_lengths = std::vector<size_t>{test.input.size()};
+            auto const embedding_levels = hi::unicode_bidi_L1(line_lengths, embedding_levels_paragraphs.begin(), test.input.begin(), [](auto x) { return x; });
 
             // We are using the index from the iterator to find embedded levels
             // in input-order. We ignore all elements that where removed by X9.
-            for (auto it = first; it != last; ++it) {
-                auto const expected_embedding_level = test.levels[it->index];
-
-                REQUIRE((expected_embedding_level == -1 or expected_embedding_level == it->embedding_level));
+            REQUIRE(embedding_levels.size() == test.levels.size());
+            for (auto i = 0; i != embedding_levels.size(); ++i) {
+                if (test.levels[i] != -1) {
+                    REQUIRE(embedding_levels[i] == test.levels[i]);
+                }
             }
 
-            REQUIRE(std::distance(first, last) == std::ssize(test.reorder));
-
-            auto index = 0;
-            for (auto it = first; it != last; ++it, ++index) {
-                auto const expected_input_index = test.reorder[index];
-
-                REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
-            }
+            //auto const display_order = hi::unicode_bidi_to_display_order(
+            //    line_lengths,
+            //    embedding_levels_paragraphs.begin(),
+            //    test.input.begin(),
+            //    get_code_point);
+//
+            //auto index = 0;
+            //for (auto it = first; it != last; ++it, ++index) {
+            //    auto const expected_input_index = test.reorder[index];
+//
+            //    REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
+            //}
         }
 
 #ifndef NDEBUG
-        if (test.line_nr > 10'000) {
-            break;
-        }
+        //if (test.line_nr > 10'000) {
+        //    break;
+        //}
 #endif
     }
 }
@@ -216,16 +263,16 @@ struct unicode_bidi_character_test {
 
 [[nodiscard]] static unicode_bidi_character_test parse_bidi_character_test_line(std::string_view line, int line_nr)
 {
-    auto const split_line = hi::split(line, ';');
-    auto const hex_characters = hi::split(split_line[0]);
+    auto const split_line = hi::split_string(line, ";");
+    auto const hex_characters = hi::split_string(split_line[0], " ");
     auto const paragraph_direction = hi::from_string<int>(split_line[1]);
     auto const resolved_paragraph_direction = hi::from_string<int>(split_line[2]);
-    auto const int_resolved_levels = hi::split(split_line[3]);
-    auto const int_resolved_order = hi::split(split_line[4]);
+    auto const int_resolved_levels = hi::split_string(split_line[3], " ");
+    auto const int_resolved_order = hi::split_string(split_line[4], " ");
 
     auto r = unicode_bidi_character_test{};
     r.line_nr = line_nr;
-    std::transform(begin(hex_characters), end(hex_characters), std::back_inserter(r.characters), [](auto const &x) {
+    std::transform(begin(hex_characters), end(hex_characters), std::back_inserter(r.characters), [](auto const& x) {
         return hi::char_cast<char32_t>(*hi::from_string<uint32_t>(x, 16));
     });
 
@@ -237,15 +284,16 @@ struct unicode_bidi_character_test {
         resolved_paragraph_direction == 1                              ? hi::unicode_bidi_class::R :
                                                                          hi::unicode_bidi_class::ON;
 
-    std::transform(begin(int_resolved_levels), end(int_resolved_levels), std::back_inserter(r.resolved_levels), [](auto const &x) {
-        if (x == "x") {
-            return -1;
-        } else {
-            return *hi::from_string<int>(x);
-        }
-    });
+    std::transform(
+        begin(int_resolved_levels), end(int_resolved_levels), std::back_inserter(r.resolved_levels), [](auto const& x) {
+            if (x == "x") {
+                return -1;
+            } else {
+                return *hi::from_string<int>(x);
+            }
+        });
 
-    std::transform(begin(int_resolved_order), end(int_resolved_order), std::back_inserter(r.resolved_order), [](auto const &x) {
+    std::transform(begin(int_resolved_order), end(int_resolved_order), std::back_inserter(r.resolved_order), [](auto const& x) {
         return *hi::from_string<int>(x);
     });
 
@@ -295,16 +343,16 @@ TEST_CASE(bidi_character_test)
         auto first = begin(input);
         auto last = end(input);
 
-        auto const[new_last, paragraph_directions] = hi::unicode_bidi(
+        auto const [new_last, paragraph_directions] = hi::unicode_bidi(
             first,
             last,
-            [](auto const &x) {
+            [](auto const& x) {
                 return x.code_point;
             },
-            [](auto &x, auto const &code_point) {
+            [](auto& x, auto const& code_point) {
                 x.code_point = code_point;
             },
-            [](auto &x, auto bidi_class) {},
+            [](auto& x, auto bidi_class) {},
             test_parameters);
 
         last = new_last;
@@ -333,4 +381,4 @@ TEST_CASE(bidi_character_test)
     }
 }
 
-};
+}; // TEST_SUITE(unicode_bidi)

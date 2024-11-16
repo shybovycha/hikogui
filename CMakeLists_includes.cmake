@@ -253,18 +253,24 @@ target_sources(hikogui INTERFACE FILE_SET hikogui_include_files TYPE HEADERS BAS
     src/hikogui/font/glyph_id.hpp
     src/hikogui/font/glyph_metrics.hpp
     src/hikogui/font/hikogui_icon.hpp
+    src/hikogui/font/otype_GDEF.hpp
     src/hikogui/font/otype_GSUB.hpp
+    src/hikogui/font/otype_class_definition_table.hpp
     src/hikogui/font/otype_cmap.hpp
     src/hikogui/font/otype_coverage.hpp
+    src/hikogui/font/otype_error.hpp
+    src/hikogui/font/otype_feature_list.hpp
     src/hikogui/font/otype_glyf.hpp
     src/hikogui/font/otype_head.hpp
     src/hikogui/font/otype_hhea.hpp
     src/hikogui/font/otype_hmtx.hpp
     src/hikogui/font/otype_kern.hpp
     src/hikogui/font/otype_loca.hpp
+    src/hikogui/font/otype_lookup_list.hpp
     src/hikogui/font/otype_maxp.hpp
     src/hikogui/font/otype_name.hpp
     src/hikogui/font/otype_os2.hpp
+    src/hikogui/font/otype_script_list.hpp
     src/hikogui/font/otype_sfnt.hpp
     src/hikogui/font/otype_utilities.hpp
     src/hikogui/font/true_type_font.hpp
@@ -416,10 +422,10 @@ target_sources(hikogui INTERFACE FILE_SET hikogui_include_files TYPE HEADERS BAS
     src/hikogui/telemetry/telemetry.hpp
     src/hikogui/telemetry/trace.hpp
     src/hikogui/test.hpp
+    src/hikogui/text/shaper.hpp
     src/hikogui/text/text.hpp
     src/hikogui/text/text_cursor.hpp
     src/hikogui/text/text_decoration.hpp
-    src/hikogui/text/text_guess_size.hpp
     src/hikogui/text/text_selection.hpp
     src/hikogui/text/text_shaper.hpp
     src/hikogui/text/text_shaper_char.hpp

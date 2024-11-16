@@ -32,14 +32,14 @@ static std::optional<test_type> parse_test_line(std::string_view line, int line_
 {
     auto r = test_type{};
 
-    auto const split_line = hi::split(line, "\t#");
+    auto const split_line = hi::split_string(line, "\t", "#");
     if (split_line.size() < 2) {
         return {};
     }
     r.comment = std::format("{}: {}", line_nr, split_line[1]);
     r.line_nr = line_nr;
 
-    auto const columns = hi::split(split_line[0]);
+    auto const columns = hi::split_string(split_line[0], " ");
     if (columns.size() < 2) {
         return {};
     }

@@ -39,6 +39,11 @@ struct font_glyph_ids {
         }
     }
 
+    [[nodiscard]] constexpr size_t size() const noexcept
+    {
+        return glyphs.size();
+    }
+
     [[nodiscard]] constexpr bool empty() const noexcept
     {
         return font.empty();
@@ -92,6 +97,11 @@ struct font_glyph_ids {
     }
 
     [[nodiscard]] glyph_id operator[](size_t i) const
+    {
+        return glyphs[i];
+    }
+
+    [[nodiscard]] glyph_id& operator[](size_t i)
     {
         return glyphs[i];
     }

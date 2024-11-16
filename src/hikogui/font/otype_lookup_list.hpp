@@ -10,33 +10,30 @@
 #include <optional>
 #include <span>
 #include <cstdint>
-#include <generator>
 
 hi_export_module(hikogui.font : otype_script_list);
 
 hi_export namespace hi::inline v1 {
-[[nodiscard]] inline std::generator<uint16_t>
-otype_lookup_list_search_offsets(std::span<std::byte const> bytes, lean_vector<uint16_t> const& lookup_indices)
+template<std::ranges::input_range LookupIndices>
+[[nodiscard]] inline generator<uint16_t>
+otype_lookup_list_search_offsets(std::span<std::byte const> bytes, LookupIndices&& lookup_indices)
 {
-    struct lookup_list_header_type {
+    struct header_type {
         big_uint16_buf_t lookup_count;
     };
 
-    auto offset = 0;
-    auto const lookup_list_header = implicit_cast<lookup_list_header_type>(offset, bytes);
+    auto offset = size_t{0};
+    auto const header = implicit_cast<header_type>(offset, bytes);
 
-    auto const lookup_offsets = implicit_cast<big_uint16_buf_t>(offset, bytes, *lookup_list_header.lookup_count);
+    auto const lookup_offsets = implicit_cast<big_uint16_buf_t>(offset, bytes, *header.lookup_count);
 
     for (auto const lookup_index : lookup_indices) {
-        if (lookup_index >= lookup_offsets.size()) {
+        if (lookup_index >= *header.lookup_count) {
             throw otype_file_error("lookup_index out of range");
         }
-
         co_yield *lookup_offsets[lookup_index];
     }
 }
-
-[[nodiscard]] inline std::generator<uint16_t> otype_lookup_table
 
 /** Execute a function for each lookup-sub-table in the lookup-list.
  *
@@ -50,9 +47,8 @@ otype_lookup_list_search_offsets(std::span<std::byte const> bytes, lean_vector<u
  *        should handle substitution or positioning of a run of glyphs.
  *        pass the glyphs as a capture.
  */
-template<std::invocable<std::span<std::byte const>, uint16_t, uint16_t, uint16_t> F>
-[[nodiscard]] inline void
-otype_lookup_list_execute(std::span<std::byte const> bytes, lean_vector<uint16_t> const& lookup_indices, F const& f)
+template<std::ranges::forward_range LookupIndices, std::invocable<std::span<std::byte const>, uint16_t, uint16_t, uint16_t> F>
+inline void otype_lookup_list_execute(std::span<std::byte const> bytes, LookupIndices&& lookup_indices, F const& f)
 {
     struct lookup_table_header_type {
         big_uint16_buf_t lookup_type;
@@ -60,16 +56,17 @@ otype_lookup_list_execute(std::span<std::byte const> bytes, lean_vector<uint16_t
         big_uint16_buf_t sub_table_count;
     };
 
-    for (auto const lookup_table_offset : otype_lookup_list_search_offsets(bytes, lookup_indices)) {
+    for (auto const lookup_table_offset : otype_lookup_list_search_offsets(bytes, std::forward<LookupIndices>(lookup_indices))) {
         auto const lookup_table_bytes = bytes.subspan(gsl::narrow_cast<size_t>(lookup_table_offset) * 2);
 
         auto offset = size_t{0};
         auto const lookup_table = implicit_cast<lookup_table_header_type>(offset, lookup_table_bytes);
-        auto const lookup_table_sub_table_offsets = implicit_cast<big_uint16_buf_t>(offset, lookup_table_bytes, *lookup_table.sub_table_count);
-        auto const mark_filtering_set = implicit_cast<big_uint16_buf_t>(offset, lookup_table_bytes);
+        auto const lookup_table_sub_table_offsets =
+            implicit_cast<big_uint16_buf_t>(offset, lookup_table_bytes, *lookup_table.sub_table_count);
+        auto const mark_filtering_set = *implicit_cast<big_uint16_buf_t>(offset, lookup_table_bytes);
 
         for (auto const lookup_sub_table_offset : lookup_table_sub_table_offsets) {
-            auto const lookup_sub_table_bytes = lookup_table_bytes.subspan(gsl::narrow_cast<size_t>(lookup_sub_table_offset) * 2);
+            auto const lookup_sub_table_bytes = lookup_table_bytes.subspan(gsl::narrow_cast<size_t>(*lookup_sub_table_offset) * 2);
 
             f(lookup_sub_table_bytes, *lookup_table.lookup_type, *lookup_table.lookup_flag, mark_filtering_set);
         }

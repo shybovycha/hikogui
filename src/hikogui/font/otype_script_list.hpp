@@ -20,7 +20,7 @@ hi_export namespace hi::inline v1 {
  * @param script The script to search for.
  * @return The word-offset of the script-table, or NULL when not found.
  */
-[[nodiscard]] uint16_t otype_script_list_search(std::span<std::byte const> bytes, iso15924 script)
+[[nodiscard]] inline uint16_t otype_script_list_search(std::span<std::byte const> bytes, iso_15924 script)
 {
     struct script_header_type {
         big_uint16_buf_t script_count;
@@ -36,14 +36,14 @@ hi_export namespace hi::inline v1 {
     auto const script_tag = script.code4_open_type();
     constexpr auto default_tag = fourcc<"DFLT">();
 
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const script_header = implicit_cast<script_header_type>(offset, bytes);
 
     // Do a linear search, because there should be only a few scripts.
     // And linear search is faster than binary search for small numbers.
     auto const script_records = implicit_cast<script_record_type>(offset, bytes, *script_header.script_count);
 
-    auto default_offset = size_t{0};
+    auto default_offset = uint16_t{0};
     for (auto const& script_record : script_records) {
         auto const tag = load<uint32_t, std::endian::big>(script_record.script_tag);
 
@@ -63,7 +63,7 @@ hi_export namespace hi::inline v1 {
  * @return The word-offset of the language-system-table, from the start of the
  *         script-table, or NULL when not found.
  */
-[[nodiscard]] uint16_t otype_script_table_search(std::span<std::byte const> bytes, iso639 language)
+[[nodiscard]] inline uint16_t otype_script_table_search(std::span<std::byte const> bytes, iso_639 language)
 {
     struct script_table_header_type {
         big_uint16_buf_t default_language_system_offset;
@@ -77,13 +77,13 @@ hi_export namespace hi::inline v1 {
 
     auto const language_tag = language.open_type_code();
 
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const script_table_header = implicit_cast<script_table_header_type>(offset, bytes);
 
     auto const language_system_records =
         implicit_cast<language_system_record_type>(offset, bytes, *script_table_header.language_system_count);
 
-    auto const it = std::lower_bounds(
+    auto const it = std::lower_bound(
         language_system_records.begin(), language_system_records.end(), language_tag, [&](auto const& a, auto b) {
             return load<uint32_t, std::endian::big>(a.language_tag) < b;
         });
@@ -100,7 +100,7 @@ hi_export namespace hi::inline v1 {
  *         required feature, the rest are optional features.
  *         the required feature may be 0xffff when there is no required feature.
  */
-[[nodiscard]] lean_vector<uint16_t> otype_language_system_table_search(std::span<std::byte const> bytes)
+[[nodiscard]] inline generator<uint16_t> otype_language_system_table_search(std::span<std::byte const> bytes)
 {
     struct language_system_table_header_type {
         big_uint16_buf_t lookup_order_offset;
@@ -108,7 +108,7 @@ hi_export namespace hi::inline v1 {
         big_uint16_buf_t feature_index_count;
     };
 
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const language_system_table_header = implicit_cast<language_system_table_header_type>(offset, bytes);
 
     auto r = lean_vector<uint16_t>{};
@@ -118,9 +118,8 @@ hi_export namespace hi::inline v1 {
     auto const feature_indices =
         implicit_cast<big_uint16_buf_t>(offset, bytes, *language_system_table_header.feature_index_count);
     for (auto const& feature_index : feature_indices) {
-        r.push_back(*feature_index);
+        co_yield *feature_index;
     }
-    return r;
 }
 
 /** Search the open type script-list-table for a script and language.
@@ -132,24 +131,28 @@ hi_export namespace hi::inline v1 {
  *         required feature, the rest are optional features.
  *         the required feature may be 0xffff when there is no required feature.
  */
-[[nodiscard]] inline lean_vector<uint16_t>
-otype_script_list_search(std::span<std::byte const> bytes, iso15924 script, iso639 language)
+[[nodiscard]] inline generator<uint16_t>
+otype_script_list_search(std::span<std::byte const> bytes, iso_15924 script, iso_639 language)
 {
     auto const script_offset = otype_script_list_search(bytes, script);
     if (script_offset == 0) {
         // Script not found, no required features.
-        return {0xffff};
+        co_yield 0xffff;
+        co_return;
     }
 
     auto const script_table_bytes = bytes.subspan(gsl::narrow_cast<size_t>(script_offset) * 2);
     auto const script_table_offset = otype_script_table_search(script_table_bytes, language);
     if (script_table_offset == 0) {
         // Language not found, no required features.
-        return {0xffff};
+        co_yield 0xffff;
+        co_return;
     }
 
     auto const language_system_table_bytes = script_table_bytes.subspan(gsl::narrow_cast<size_t>(script_table_offset) * 2);
-    return otype_language_system_table_search(language_system_table_bytes);
+    for (auto const feature_index : otype_language_system_table_search(language_system_table_bytes)) {
+        co_yield feature_index;
+    }
 }
 
 

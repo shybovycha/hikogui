@@ -283,7 +283,7 @@ public:
 
         [[nodiscard]] constexpr static std::vector<std::string> parse(std::string_view str)
         {
-            auto r = make_vector<std::string>(std::views::transform(std::views::split(str, std::string_view{"/"}), [](auto&& x) {
+            auto r = std::ranges::to<std::vector>(std::views::transform(std::views::split(str, std::string_view{"/"}), [](auto&& x) {
                 return URI::decode(std::string_view{std::ranges::begin(x), std::ranges::end(x)});
             }));
 

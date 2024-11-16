@@ -129,7 +129,7 @@ public:
         assert(_triangle_example != nullptr);
 
         // Create a list of old style VkImageView of the swap-chain, HikoGUI uses the C++ vulkan bindings internally.
-        auto views_ = hi::make_vector<VkImageView>(std::views::transform(views, [](auto const& view) {
+        auto views_ = std::ranges::to<std::vector>(std::views::transform(views, [](auto const& view) {
             return static_cast<VkImageView>(view);
         }));
 

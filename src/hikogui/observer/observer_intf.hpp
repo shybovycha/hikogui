@@ -82,7 +82,7 @@ public:
 
         proxy_type& operator=(proxy_type&& other) noexcept
         {
-            notify();
+            _observer->notify();
             _observer = std::exchange(other._observer, nullptr);
             _ptr = std::exchange(other._ptr, nullptr);
             _original_value = std::exchange(other._original_value, std::nullopt);

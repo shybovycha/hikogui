@@ -20,7 +20,7 @@
 hi_export_module(hikogui.font.otype_GSUB);
 
 hi_export namespace hi::inline v1 {
-[[nodiscard]] void otype_GSUB_type1_format1_apply(
+inline void otype_GSUB_type1_format1_apply(
     std::span<std::byte const> bytes,
     std::span<std::byte const> GDEF_bytes,
     std::span<font_glyph_ids> run,
@@ -33,9 +33,7 @@ hi_export namespace hi::inline v1 {
         big_uint16_buf_t delta_glyph_id;
     };
 
-    auto const lookup_flag_ = otype_GSUB_lookup_flag{lookup_flag};
-
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const header = implicit_cast<header_type>(offset, bytes);
     assert(*header.format == 1);
 
@@ -59,7 +57,7 @@ hi_export namespace hi::inline v1 {
     }
 }
 
-[[nodiscard]] void otype_GSUB_type1_format2_apply(
+inline void otype_GSUB_type1_format2_apply(
     std::span<std::byte const> bytes,
     std::span<std::byte const> GDEF_bytes,
     std::span<font_glyph_ids> run,
@@ -72,7 +70,7 @@ hi_export namespace hi::inline v1 {
         big_uint16_buf_t glyph_count;
     };
 
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const header = implicit_cast<header_type>(offset, bytes);
     assert(*header.format == 2);
 
@@ -94,7 +92,7 @@ hi_export namespace hi::inline v1 {
     }
 }
 
-[[nodiscard]] void otype_GSUB_type4_format1_apply(
+inline void otype_GSUB_type4_format1_apply(
     std::span<std::byte const> bytes,
     std::span<std::byte const> GDEF_bytes,
     std::span<font_glyph_ids> run,
@@ -114,21 +112,21 @@ hi_export namespace hi::inline v1 {
 
     auto const advance_glyph = [&](size_t& grapheme_i, size_t& glyph_i) {
         do {
-            if (++glyph_i == font_glyph_ids[grapheme_i].size()) {
+            if (++glyph_i == run[grapheme_i].size()) {
                 if (++grapheme_i == run.size()) {
                     return false;
                 }
                 glyph_i = 0;
             }
         } while (
-            otype_GDEF_filter_glyph(GDEF_bytes, font_glyph_ids[grapheme_i][glyph_i], glyph_i, lookup_flag, mark_filtering_set));
+            otype_GDEF_filter_glyph(GDEF_bytes, run[grapheme_i][glyph_i], glyph_i, lookup_flag, mark_filtering_set));
         return true;
     };
 
-    auto const first_glyph = []() -> std::pair<size_t, size_t> {
+    auto const first_glyph = [&]() -> std::pair<size_t, size_t> {
         auto grapheme_i = size_t{0};
         auto glyph_i = size_t{0};
-        if (otype_GDEF_filter_glyph(GDEF_bytes, font_glyph_ids[grapheme_i][glyph_i], glyph_i, lookup_flag, mark_filtering_set)) {
+        if (otype_GDEF_filter_glyph(GDEF_bytes, run[grapheme_i][glyph_i], glyph_i, lookup_flag, mark_filtering_set)) {
             advance_glyph(grapheme_i, glyph_i);
         }
         return {grapheme_i, glyph_i};
@@ -158,7 +156,7 @@ hi_export namespace hi::inline v1 {
         }
 
         auto const ligature_set_offset = ligature_offsets[*coverage_index];
-        auto const ligature_set_bytes = bytes.subspan(gsl::narrow_cast<size_t>(ligature_set_offset) * 2);
+        auto const ligature_set_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*ligature_set_offset) * 2);
         auto offset = size_t{0};
         auto const ligature_count = implicit_cast<big_uint16_buf_t>(offset, ligature_set_bytes);
         auto const ligature_offsets = implicit_cast<big_uint16_buf_t>(offset, ligature_set_bytes, *ligature_count);
@@ -166,7 +164,7 @@ hi_export namespace hi::inline v1 {
         for (auto ligature_offset : ligature_offsets) {
             auto offset = size_t{0};
 
-            auto const ligature_bytes = ligature_set_bytes.subspan(gsl::narrow_cast<size_t>(ligature_offset) * 2);
+            auto const ligature_bytes = ligature_set_bytes.subspan(gsl::narrow_cast<size_t>(*ligature_offset) * 2);
             auto const ligature = implicit_cast<ligature_type>(offset, ligature_bytes);
             if (*ligature.component_count == 0) {
                 throw otype_file_error("GSUB type 4 format 1 ligature has no components");
@@ -180,7 +178,7 @@ hi_export namespace hi::inline v1 {
                     if (not advance_glyph(grapheme_j, glyph_j)) {
                         return false;
                     }
-                    if (font_glyph_ids[grapheme_j][glyph_j] != *component) {
+                    if (run[grapheme_j][glyph_j] != *component) {
                         return false;
                     }
                 }
@@ -200,7 +198,7 @@ hi_export namespace hi::inline v1 {
                 auto glyph_j = glyph_i;
                 for (auto component : components) {
                     advance_glyph(grapheme_j, glyph_j);
-                    font_glyph_ids[grapheme_j][glyph_j] = glyph_id{};
+                    run[grapheme_j][glyph_j] = {};
                 }
                 break;
             }
@@ -208,7 +206,7 @@ hi_export namespace hi::inline v1 {
     }
 }
 
-[[nodiscard]] void otype_GSUB_apply_sub_table(
+inline void otype_GSUB_apply_sub_table(
     std::span<std::byte const> bytes,
     std::span<std::byte const> GDEF_bytes,
     std::span<font_glyph_ids> run,
@@ -216,9 +214,10 @@ hi_export namespace hi::inline v1 {
     uint16_t lookup_flag,
     uint16_t mark_filtering_set)
 {
+    auto const format = *implicit_cast<big_uint16_buf_t>(bytes);
+
     switch (lookup_type) {
     case 1:
-        auto const format = *implicit_cast<big_uint16_buf_t>(bytes);
         switch (format) {
         case 1:
             otype_GSUB_type1_format1_apply(bytes, GDEF_bytes, run, lookup_flag, mark_filtering_set);
@@ -232,7 +231,6 @@ hi_export namespace hi::inline v1 {
         break;
 
     case 4:
-        auto const format = *implicit_cast<big_uint16_buf_t>(bytes);
         switch (format) {
         case 1:
             otype_GSUB_type4_format1_apply(bytes, GDEF_bytes, run, lookup_flag, mark_filtering_set);
@@ -258,39 +256,39 @@ hi_export namespace hi::inline v1 {
  * @param language The language of the run.
  * @param feature_tags The feature tags to apply.
  */
-[[nodiscard]] void otype_GSUB_apply(
+inline void otype_GSUB_apply(
     std::span<std::byte const> bytes,
     std::span<std::byte const> GDEF_bytes,
     std::span<font_glyph_ids> run,
-    iso15924 script,
-    iso639 language,
+    iso_15924 script,
+    iso_639 language,
     std::span<uint32_t> feature_tags)
 {
     struct GSUB_version_1_0 {
-        big_uint16_t major_version;
-        big_uint16_t minor_version;
-        big_uint16_t script_list_offset;
-        big_uint16_t feature_list_offset;
-        big_uint16_t lookup_list_offset;
+        big_uint16_buf_t major_version;
+        big_uint16_buf_t minor_version;
+        big_uint16_buf_t script_list_offset;
+        big_uint16_buf_t feature_list_offset;
+        big_uint16_buf_t lookup_list_offset;
     };
 
-    auto offset = 0;
+    auto offset = size_t{0};
     auto const header = implicit_cast<GSUB_version_1_0>(offset, bytes);
     if (*header.major_version != 1 and (*header.minor_version != 0 or *header.minor_version != 1)) {
         throw otype_file_error("GSUB table version not supported");
     }
 
     auto const script_list_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*header.script_list_offset) * 2);
-    auto const feature_indices = otype_script_list_search(script_list_bytes, script, language);
+    auto feature_indices = otype_script_list_search(script_list_bytes, script, language);
 
     auto const feature_list_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*header.feature_list_offset) * 2);
-    auto const lookup_indices = otype_feature_table_search(feature_list_bytes, feature_indices, feature_tags);
+    auto const lookup_indices = otype_feature_table_search(feature_list_bytes, std::move(feature_indices), feature_tags);
 
     auto const lookup_list_bytes = bytes.subspan(gsl::narrow_cast<size_t>(*header.lookup_list_offset) * 2);
 
     otype_lookup_list_execute(
-        lookup_list_bytes, lookup_indices, [&](auto const& bytes, auto lookup_type, auto lookup_flag, auto mark_filtering_set) {
-            otype_GSUB_apply_sub_table(bytes, GDEF_bytes, run, lookup_type, lookup_flag, mark_filtering_set);
+        lookup_list_bytes, lookup_indices, [&](std::span<std::byte const> sub_table_bytes, uint16_t lookup_type, uint16_t lookup_flag, uint16_t mark_filtering_set) {
+            otype_GSUB_apply_sub_table(sub_table_bytes, GDEF_bytes, run, lookup_type, lookup_flag, mark_filtering_set);
         });
 }
 }
