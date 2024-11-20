@@ -187,6 +187,7 @@ target_sources(hikogui INTERFACE FILE_SET hikogui_include_files TYPE HEADERS BAS
     src/hikogui/container/polymorphic_optional.hpp
     src/hikogui/container/resource_pool.hpp
     src/hikogui/container/secure_vector.hpp
+    src/hikogui/container/sequence.hpp
     src/hikogui/container/stable_set.hpp
     src/hikogui/container/stack.hpp
     src/hikogui/container/undo_stack.hpp
@@ -470,6 +471,7 @@ target_sources(hikogui INTERFACE FILE_SET hikogui_include_files TYPE HEADERS BAS
     src/hikogui/unicode/ucd_word_break_properties.hpp
     src/hikogui/unicode/unicode.hpp
     src/hikogui/unicode/unicode_bidi.hpp
+    src/hikogui/unicode/unicode_bidi_old.hpp
     src/hikogui/unicode/unicode_break_opportunity.hpp
     src/hikogui/unicode/unicode_description.hpp
     src/hikogui/unicode/unicode_grapheme_cluster_break.hpp

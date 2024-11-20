@@ -23,73 +23,79 @@ hi_export namespace hi::inline v1 {
  *         second element is one beyond the last index of the range.
  */
 template<typename Pair = std::pair<size_t, size_t>>
-class sequence {
+class sequence : public std::vector<Pair> {
 private:
-    [[nodiscard]] consteval static auto pair_value_type() const noexcept
+    [[nodiscard]] consteval static auto pair_index_type() noexcept
     {
         auto const [first, _] = std::declval<Pair>();
         return first;
     }
 
 public:
-    using pair_type = Pair;
-    using value_type = decltype(pair_value_type());
-    using container_type = std::vector<range_type>;
+    using super = std::vector<Pair>;
+    using index_type = decltype(pair_index_type());
 
-    struct const_iterator {
-        sequence const* sequence = nullptr;
-        size_t major_index = 0;
-        value_type minor_index = 0;
+    class index_iterator {
+    public:
+        constexpr index_iterator() noexcept = default;
+        constexpr index_iterator(index_iterator const&) noexcept = default;
+        constexpr index_iterator(index_iterator&&) noexcept = default;
+        constexpr index_iterator& operator=(index_iterator const&) noexcept = default;
+        constexpr index_iterator& operator=(index_iterator&&) noexcept = default;
+        [[nodiscard]] constexpr friend bool operator==(index_iterator const&, index_iterator const&) noexcept = default;
+        [[nodiscard]] constexpr friend std::weak_ordering operator<=>(index_iterator const& lhs, index_iterator const& rhs) noexcept
+        {
+            if (lhs._sequence != rhs._sequence) {
+                return std::weak_ordering::unordered;
+            }
+            if (lhs._major_index != rhs._major_index) {
+                return lhs._major_index <=> rhs._major_index;
+            }
+            return lhs._minor_index <=> rhs._minor_index;
+        }
 
-        constexpr const_iterator(const_iterator const&) noexcept = default;
-        constexpr const_iterator(const_iterator&&) noexcept = default;
-        constexpr const_iterator& operator=(const_iterator const&) noexcept = default;
-        constexpr const_iterator& operator=(const_iterator&&) noexcept = default;
-        [[nodiscard]] constexpr friend bool operator==(const_iterator const&, const_iterator const&) noexcept = default;
-        [[nodiscard]] constexpr friend bool operator<=>(const_iterator const&, const_iterator const&) noexcept = default;
-
-        constexpr const_iterator(
+        constexpr index_iterator(
             sequence const* sequence,
             size_t major_index = 0,
-            value_type minor_index = 0) noexcept :
-            sequence(sequence), major_index(major_index), minor_index(minor_index)
+            index_type minor_index = 0) noexcept :
+            _sequence(sequence), _major_index(major_index), _minor_index(minor_index)
         {
         }
 
-        [[nodiscard]] constexpr value_type operator*() const
+        [[nodiscard]] constexpr index_type operator*() const
         {
-            assert(sequence != nullptr);
-            auto const [first, last] = sequence->range_at(major_index);
-            auto const r = first + minor_index;
+            assert(_sequence != nullptr);
+            auto const [first, last] = _sequence->at(_major_index);
+            auto const r = first + _minor_index;
             assert(r < last);
             return r;
         }
 
-        constexpr const_iterator& operator++() noexcept
+        constexpr index_iterator& operator++()
         {
             return advance(1);
         }
 
-        constexpr const_iterator operator++(int) noexcept
+        constexpr index_iterator operator++(int)
         {
             auto r = *this;
             advance(1);
             return r;
         }
 
-        constexpr const_iterator& operator--() noexcept
+        constexpr index_iterator& operator--()
         {
             return retreat(1);
         }
 
-        constexpr const_iterator operator--(int) noexcept
+        constexpr index_iterator operator--(int)
         {
             auto r = *this;
             retreat(1);
             return r;
         }
 
-        constexpr const_iterator& operator+=(ptrdiff_t n) noexcept
+        constexpr index_iterator& operator+=(ptrdiff_t n)
         {
             if (n >= 0) {
                 return advance(static_cast<size_t>(n));
@@ -98,7 +104,7 @@ public:
             }
         }
 
-        constexpr const_iterator& operator-=(ptrdiff_t n) noexcept
+        constexpr index_iterator& operator-=(ptrdiff_t n)
         {
             if (n >= 0) {
                 return retreat(static_cast<size_t>(n));
@@ -107,14 +113,14 @@ public:
             }
         }
 
-        [[nodiscard]] constexpr const_iterator operator+(ptrdiff_t n) const noexcept
+        [[nodiscard]] constexpr index_iterator operator+(ptrdiff_t n) const
         {
             auto r = *this;
             r += n;
             return r;
         }
 
-        [[nodiscard]] constexpr const_iterator operator-(ptrdiff_t n) const noexcept
+        [[nodiscard]] constexpr index_iterator operator-(ptrdiff_t n) const
         {
             auto r = *this;
             r -= n;
@@ -122,101 +128,61 @@ public:
         }
 
     private:
-        constexpr const_iterator& advance(size_t n)
+        sequence const* _sequence = nullptr;
+        size_t _major_index = 0;
+        index_type _minor_index = 0;
+
+        constexpr index_iterator& advance(size_t n)
         {
-            assert(sequence != nullptr);
+            assert(_sequence != nullptr);
             while (n != 0) {
-                auto const [first, last] = sequence->range_at(major_index);
+                auto const [first, last] = _sequence->at(_major_index);
                 auto const size = last - first;
-                auto const remaining = size - minor_index;
+                auto const remaining = size - _minor_index;
                 auto const m = std::min(n, remaining);
-                minor_index += m;
+                _minor_index += m;
                 n -= m;
-                if (minor_index == size) {
-                    ++major_index;
-                    minor_index = 0;
+                if (_minor_index == size) {
+                    ++_major_index;
+                    _minor_index = 0;
                 }
             }
             return *this;
         }
 
-        constexpr const_iterator& retreat(size_t n)
+        constexpr index_iterator& retreat(size_t n)
         {
-            assert(sequence != nullptr);
+            assert(_sequence != nullptr);
             while (n != 0) {
-                if (minor_index == 0) {
-                    assert(major_index != 0);
-                    --major_index;
-                    auto const [first, last] = sequence->range_at(major_index);
-                    minor_index = last - first;
+                if (_minor_index == 0) {
+                    assert(_major_index != 0);
+                    --_major_index;
+                    auto const [first, last] = _sequence->at(_major_index);
+                    _minor_index = last - first;
                 }
 
-                auto const m = std::min(n, minor_index);
-                minor_index -= m;
+                auto const m = std::min(n, _minor_index);
+                _minor_index -= m;
                 n -= m;
             }
             return *this;
         }
     };
 
-    constexpr sequence() noexcept = default;
-    constexpr sequence(sequence const&) = default;
-    constexpr sequence(sequence&&) noexcept(std::is_nothrow_move_constructible_v<container_type>) = default;
-    constexpr sequence& operator=(sequence const&) = default;
-    constexpr sequence& operator=(sequence&&) noexcept(std::is_nothrow_move_assignable_v<container_type>) = default;
+    using super::super;
 
-    [[nodiscard]] constexpr const_iterator begin() const noexcept
+    [[nodiscard]] constexpr index_iterator index_begin() const noexcept
     {
-        return const_iterator{this};
+        return index_iterator{this};
     }
 
-    [[nodiscard]] constexpr const_iterator end() const noexcept
+    [[nodiscard]] constexpr index_iterator index_end() const noexcept
     {
-        return const_iterator{this, size()};
-    }
-
-    [[nodiscard]] constexpr size_t size() const noexcept
-    {
-        return std::accumulate(_sequence.begin(), _sequence.end(), size_t{0}, [](size_t a, sequence_range const& b) {
-            return a + b.size();
-        });
-    }
-
-    [[nodiscard]] constexpr bool empty() const noexcept
-    {
-        return _sequence.empty();
-    }
-
-    constexpr void clear() noexcept
-    {
-        _sequence.clear();
-    }
-
-    constexpr void push_back(sequence_range const& range)
-    {
-        _sequence.push_back(range);
-    }
-
-    constexpr void emplace_back(size_t first, size_t last)
-    {
-        _sequence.emplace_back(first, last);
-    }
-
-    constexpr void pop_back()
-    {
-        _sequence.pop_back();
-    }
-
-private:
-    container_type _sequence;
-
-    [[nodiscard]] constexpr pair_type const& range_at(size_t i) const
-    {
-        if (i >= _sequence.size()) {
-            throw std::out_of_range{"sequence_range::range_at"};
-        }
-        return _sequence[i];
+        return index_iterator{this, this->size()};
     }
 };
+
+
+
 
 }
