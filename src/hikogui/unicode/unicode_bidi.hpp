@@ -7,6 +7,14 @@
 #include "ucd_bidi_classes.hpp"
 #include "../container/container.hpp"
 #include "../macros.hpp"
+#include <gsl/gsl>
+#include <span>
+#include <vector>
+#include <tuple>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
 hi_export_module(hikogui.unicode : unicode_bidi);
 
@@ -327,7 +335,7 @@ unicode_bidi_BD13_last_class(std::span<unicode_bidi_class const> directions, siz
  * @return A vector of isolated run sequences.
  */
 [[nodiscard]] constexpr std::vector<std::vector<std::pair<size_t, size_t>>>
-unicode_bidi_BD13(std::span<unicode_bidi_class const> directions, std::vector<std::pair<size_t, size_t>> runs) noexcept
+unicode_bidi_BD13(std::span<unicode_bidi_class const> directions, sequence runs) noexcept
 {
     auto run_has_isolate_initiator = [&](auto const& run) {
         return is_isolate_starter(unicode_bidi_BD13_first_class(directions, run.first, run.second));

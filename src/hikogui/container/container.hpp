@@ -9,6 +9,7 @@
 #include "polymorphic_optional.hpp" // export
 #include "resource_pool.hpp" // export
 #include "secure_vector.hpp" // export
+#include "sequence.hpp" // export
 #include "stable_set.hpp" // export
 #include "stack.hpp" // export
 #include "undo_stack.hpp" // export
