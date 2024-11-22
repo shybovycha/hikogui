@@ -1132,34 +1132,75 @@ constexpr void unicode_bidi_X10(
 {
     using enum unicode_bidi_class;
 
+    enum class state_type {
+        idle,
+        found_BN,
+        found_WS_ISOLATE,
+    };
+
     assert(directions.size() == embedding_levels.size());
 
     auto lowest_odd = std::numeric_limits<int8_t>::max();
     auto highest = paragraph_embedding_level;
-    auto preceding_is_segment = true;
 
-    auto i = directions.size();
-    while (i != 0) {
-        --i;
+    auto const null = directions.size();
 
+    auto state = state_type::idle;
+    auto start = null;
+
+    for (auto i = size_t{0}; i != directions.size(); ++i) {
         auto const& direction = directions[i];
         auto& embedding_level = embedding_levels[i];
 
-        if (direction == B or direction == S) {
-            embedding_level = paragraph_embedding_level;
-            preceding_is_segment = true;
-
-        } else if (preceding_is_segment && (direction == WS or is_isolate_formatter(direction))) {
-            embedding_level = paragraph_embedding_level;
-            preceding_is_segment = true;
-
-        } else {
-            highest = std::max(highest, embedding_level);
-            if ((embedding_level % 2) == 1) {
-                lowest_odd = std::min(lowest_odd, embedding_level);
+        switch (direction) {
+        case BN:
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            if (state < state_type::found_BN) {
+                state = state_type::found_BN;
+                if (start == null) {
+                    start = i;
+                }
             }
+            break;
 
-            preceding_is_segment = false;
+        case WS:
+        case FSI:
+        case LRI:
+        case RLI:
+        case PDI:
+            if (state < state_type::found_WS_ISOLATE) {
+                state = state_type::found_WS_ISOLATE;
+                if (start == null) {
+                    start = i;
+                }
+            }
+            break;
+
+        case S:
+        case B:
+            if (state == state_type::found_WS_ISOLATE) {
+                assert(start != null);
+                for (auto j = start; j != i; ++j) {
+                    embedding_levels[j] = paragraph_embedding_level;
+                }
+            }
+            [[fallthrough]];
+        default:
+            state = state_type::idle;
+            start = null;
+        }
+
+        highest = std::max(highest, embedding_level);
+        if ((embedding_level % 2) == 1) {
+            lowest_odd = std::min(lowest_odd, embedding_level);
+        }
+    }
+
+    // Handle sequence of WS, FSI, LRI, RLI, PDI at the end of a line.
+    if (state == state_type::found_WS_ISOLATE) {
+        assert(start != null);
+        for (auto j = start; j != directions.size(); ++j) {
+            embedding_levels[j] = paragraph_embedding_level;
         }
     }
 
