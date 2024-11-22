@@ -183,9 +183,11 @@ struct shaper_grapheme_metrics {
 
 [[nodiscard]] inline std::vector<int8_t> shaper_collect_embedding_levels(gstring_view text)
 {
-    return unicode_bidi_get_embedding_levels(text.begin(), text.end(), unicode_bidi_class::B, [](auto const& g) {
-        return g.starter();
-    });
+    //return unicode_bidi_get_embedding_levels(text.begin(), text.end(), unicode_bidi_class::B, [](auto const& g) {
+    //    return g.starter();
+    //});
+    hi_not_implemented();
+    return {};
 }
 
 /** Fold lines of a text.
@@ -361,9 +363,11 @@ shaper_collect_text_metrics(std::vector<shaper_line_metrics> const& line_metrics
 [[nodiscard]] inline std::vector<size_t>
 shaper_display_order(std::vector<size_t> const& line_sizes, std::vector<int8_t> const& embedding_levels, gstring_view text)
 {
-    return unicode_bidi_to_display_order(line_sizes, embedding_levels.begin(), text.begin(), [](auto const& g) {
-        return ucd_get_bidi_class(g.starter());
-    });
+    //return unicode_bidi_to_display_order(line_sizes, embedding_levels.begin(), text.begin(), [](auto const& g) {
+    //    return ucd_get_bidi_class(g.starter());
+    //})
+    hi_not_implemented();
+    return {};
 }
 
 struct shaper_phase1_result {

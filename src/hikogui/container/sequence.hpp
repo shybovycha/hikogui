@@ -12,6 +12,16 @@
 #include <ranges>
 #include <vector>
 
+hi_warning_push();
+// MSVC: warning C4146: unary minus operator applied to unsigned type, result
+// still unsigned. Used to properly negate a minimum signed integer to a
+// positive unsigned integer. Example:
+// ```cpp
+// auto const x = std::numeric_limits<int>::min();
+// auto const y = -static_cast<unsigned int>(x);
+// ```
+hi_warning_ignore_msvc(4146);
+
 hi_export_module(hikogui.algorithm.recursive_iterator);
 
 hi_export namespace hi::inline v1 {
@@ -43,10 +53,10 @@ public:
         constexpr index_iterator& operator=(index_iterator const&) noexcept = default;
         constexpr index_iterator& operator=(index_iterator&&) noexcept = default;
         [[nodiscard]] constexpr friend bool operator==(index_iterator const&, index_iterator const&) noexcept = default;
-        [[nodiscard]] constexpr friend std::weak_ordering operator<=>(index_iterator const& lhs, index_iterator const& rhs) noexcept
+        [[nodiscard]] constexpr friend std::partial_ordering operator<=>(index_iterator const& lhs, index_iterator const& rhs) noexcept
         {
             if (lhs._sequence != rhs._sequence) {
-                return std::weak_ordering::unordered;
+                return std::partial_ordering::unordered;
             }
             if (lhs._major_index != rhs._major_index) {
                 return lhs._major_index <=> rhs._major_index;
@@ -183,6 +193,6 @@ public:
 };
 
 
-
-
 }
+
+hi_warning_pop();

@@ -5,6 +5,9 @@
 #pragma once
 
 #include "ucd_bidi_classes.hpp"
+#include "ucd_bidi_mirroring_glyphs.hpp"
+#include "ucd_bidi_paired_bracket_types.hpp"
+#include "ucd_decompositions.hpp"
 #include "../container/container.hpp"
 #include "../macros.hpp"
 #include <gsl/gsl>
@@ -27,7 +30,8 @@ hi_export namespace hi::inline v1 {
  * @param mode The direction mode of the paragraph. Either L, R, or B (LTR-auto).
  */
 template<bool rule_X5c>
-[[nodiscard]] unicode_bidi_class unicode_bidi_P2(std::span<unicode_bidi_class const> directions, unicode_bidi_class mode) noexcept
+[[nodiscard]] constexpr unicode_bidi_class
+unicode_bidi_P2(std::span<unicode_bidi_class const> directions, unicode_bidi_class mode) noexcept
 {
     using enum unicode_bidi_class;
 
@@ -68,7 +72,7 @@ template<bool rule_X5c>
  *
  * @param paragraph_bidi_class The paragraph direction.
  */
-[[nodiscard]] int8_t unicode_bidi_P3(unicode_bidi_class paragraph_bidi_class) noexcept
+[[nodiscard]] constexpr int8_t unicode_bidi_P3(unicode_bidi_class paragraph_bidi_class) noexcept
 {
     return static_cast<int8_t>(paragraph_bidi_class == unicode_bidi_class::AL or paragraph_bidi_class == unicode_bidi_class::R);
 }
@@ -118,13 +122,16 @@ constexpr void unicode_bidi_X1(
         auto const next_odd_embedding_level = next_odd(current_embedding_level);
         auto const next_even_embedding_level = next_even(current_embedding_level);
 
+        auto& direction = directions[i];
+        auto& embedding_level = embedding_levels[i];
+
         auto RLI_implementation = [&] {
-            embedding_levels[i] = current_embedding_level;
+            embedding_level = current_embedding_level;
             if (current_override_status != ON) {
-                directions[i] = current_override_status;
+                direction = current_override_status;
             }
 
-            if (next_odd_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            if (next_odd_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 ++valid_isolate_count;
                 directional_status.emplace_back(next_odd_embedding_level, ON, true);
             } else {
@@ -133,12 +140,12 @@ constexpr void unicode_bidi_X1(
         };
 
         auto LRI_implementation = [&] {
-            embedding_levels[i] = current_embedding_level;
+            embedding_level = current_embedding_level;
             if (current_override_status != ON) {
-                directions[i] = current_override_status;
+                direction = current_override_status;
             }
 
-            if (next_even_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            if (next_even_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 ++valid_isolate_count;
                 directional_status.emplace_back(next_even_embedding_level, ON, true);
             } else {
@@ -146,9 +153,13 @@ constexpr void unicode_bidi_X1(
             }
         };
 
-        switch (directions[i]) {
+        switch (direction) {
         case RLE: // X2. Explicit embeddings
-            if (next_odd_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = current_embedding_level;
+            direction = BN;
+
+            if (next_odd_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 directional_status.emplace_back(next_odd_embedding_level, ON, false);
             } else if (overflow_isolate_count == 0) {
                 ++overflow_embedding_count;
@@ -156,7 +167,11 @@ constexpr void unicode_bidi_X1(
             break;
 
         case LRE: // X3. Explicit embeddings
-            if (next_even_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = current_embedding_level;
+            direction = BN;
+
+            if (next_even_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 directional_status.emplace_back(next_even_embedding_level, ON, false);
             } else if (overflow_isolate_count == 0) {
                 ++overflow_embedding_count;
@@ -164,7 +179,11 @@ constexpr void unicode_bidi_X1(
             break;
 
         case RLO: // X4. Explicit overrides
-            if (next_odd_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = current_embedding_level;
+            direction = BN;
+
+            if (next_odd_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 directional_status.emplace_back(next_odd_embedding_level, R, false);
             } else if (overflow_isolate_count == 0) {
                 ++overflow_embedding_count;
@@ -172,7 +191,11 @@ constexpr void unicode_bidi_X1(
             break;
 
         case LRO: // X5. Explicit overrides
-            if (next_even_embedding_level <= max_depth && overflow_isolate_count == 0 && overflow_embedding_count == 0) {
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = current_embedding_level;
+            direction = BN;
+
+            if (next_even_embedding_level <= max_depth and overflow_isolate_count == 0 and overflow_embedding_count == 0) {
                 directional_status.emplace_back(next_even_embedding_level, L, false);
             } else if (overflow_isolate_count == 0) {
                 ++overflow_embedding_count;
@@ -215,9 +238,9 @@ constexpr void unicode_bidi_X1(
                 --valid_isolate_count;
             }
 
-            embedding_levels[i] = directional_status.back().embedding_level;
+            embedding_level = directional_status.back().embedding_level;
             if (directional_status.back().override_status != ON) {
-                directions[i] = directional_status.back().override_status;
+                direction = directional_status.back().override_status;
             }
             break;
 
@@ -232,44 +255,27 @@ constexpr void unicode_bidi_X1(
             } else {
                 // PDF does not match embedding character.
             }
+
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = directional_status.back().embedding_level;
+            direction = BN;
             break;
 
         case B: // X8. End of Paragraph
-            embedding_levels[i] = paragraph_embedding_level;
+            embedding_level = paragraph_embedding_level;
             return;
 
         case BN: // X6. Ignore
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            embedding_level = current_embedding_level;
             break;
 
         default: // X6
-            embedding_levels[i] = current_embedding_level;
+            embedding_level = current_embedding_level;
             if (current_override_status != ON) {
-                directions[i] = current_override_status;
+                direction = current_override_status;
             }
         }
-    }
-}
-
-/** Ignore explicit embeddings and overrides.
- *
- * @param direction The bidi class of the character.
- * @return True if the character is an explicit embedding or override
- *         that should be ignored according to X9.
- */
-[[nodiscard]] constexpr bool unicode_bidi_X9(unicode_bidi_class direction) noexcept
-{
-    using enum unicode_bidi_class;
-
-    switch (direction) {
-    case RLE:
-    case LRE:
-    case RLO:
-    case LRO:
-    case PDF:
-    case BN:
-        return true;
-    default:
-        return false;
     }
 }
 
@@ -303,11 +309,13 @@ constexpr void unicode_bidi_X1(
 [[nodiscard]] constexpr unicode_bidi_class
 unicode_bidi_BD13_first_class(std::span<unicode_bidi_class const> directions, size_t first, size_t last)
 {
+    using enum unicode_bidi_class;
+
     assert(first < last);
     assert(last <= directions.size());
 
     for (auto i = first; i != last; ++i) {
-        if (not unicode_bidi_X9(directions[i])) {
+        if (directions[i] != BN) {
             return directions[i];
         }
     }
@@ -317,11 +325,13 @@ unicode_bidi_BD13_first_class(std::span<unicode_bidi_class const> directions, si
 [[nodiscard]] constexpr unicode_bidi_class
 unicode_bidi_BD13_last_class(std::span<unicode_bidi_class const> directions, size_t first, size_t last)
 {
+    using enum unicode_bidi_class;
+
     assert(first < last);
     assert(last <= directions.size());
 
     for (auto i = last; i != first; --i) {
-        if (not unicode_bidi_X9(directions[i - 1])) {
+        if (directions[i - 1] != BN) {
             return directions[i - 1];
         }
     }
@@ -379,8 +389,8 @@ unicode_bidi_BD13(std::span<unicode_bidi_class const> directions, sequence<> run
     return r;
 }
 
-
-constexpr void unicode_bidi_W1(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
+constexpr void
+unicode_bidi_W1(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
 {
     using enum unicode_bidi_class;
 
@@ -389,8 +399,10 @@ constexpr void unicode_bidi_W1(sequence<> const& sequence, std::span<unicode_bid
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
-        if (unicode_bidi_X9(direction)) {
+        auto& direction = directions[i];
+
+        // X9. Retaining BNs and Explicit Formatting Characters.
+        if (direction == BN) {
             continue;
         }
 
@@ -412,7 +424,8 @@ constexpr void unicode_bidi_W1(sequence<> const& sequence, std::span<unicode_bid
     }
 }
 
-constexpr void unicode_bidi_W2(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
+constexpr void
+unicode_bidi_W2(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
 {
     using enum unicode_bidi_class;
 
@@ -421,7 +434,7 @@ constexpr void unicode_bidi_W2(sequence<> const& sequence, std::span<unicode_bid
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
+        auto& direction = directions[i];
         switch (direction) {
         case R:
         case L:
@@ -446,7 +459,7 @@ constexpr void unicode_bidi_W3(sequence<> const& sequence, std::span<unicode_bid
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
+        auto& direction = directions[i];
         if (direction == AL) {
             direction = R;
         }
@@ -457,23 +470,23 @@ constexpr void unicode_bidi_W4(sequence<> const& sequence, std::span<unicode_bid
 {
     using enum unicode_bidi_class;
 
-    unicode_bidi_class *back1 = nullptr;
-    unicode_bidi_class *back2 = nullptr;
+    unicode_bidi_class* back1 = nullptr;
+    unicode_bidi_class* back2 = nullptr;
     for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
-        if (unicode_bidi_X9(direction)) {
+        auto& direction = directions[i];
+
+        // X9. Retaining BNs and Explicit Formatting Characters.
+        if (direction == BN) {
             continue;
         }
 
-        if (direction == EN and back2 != nullptr and *back2 == EN and back1 != nullptr and
-            (*back1 == ES or *back1 == CS)) {
+        if (direction == EN and back2 != nullptr and *back2 == EN and back1 != nullptr and (*back1 == ES or *back1 == CS)) {
             *back1 = EN;
         }
-        if (direction == AN and back2 != nullptr and *back2 == AN and back1 != nullptr and
-            *back1 == CS) {
+        if (direction == AN and back2 != nullptr and *back2 == AN and back1 != nullptr and *back1 == CS) {
             *back1 = AN;
         }
 
@@ -485,46 +498,63 @@ constexpr void unicode_bidi_W5(sequence<> const& sequence, std::span<unicode_bid
 {
     using enum unicode_bidi_class;
 
+    enum class state_type { idle, found_BN, found_ET, found_EN };
+
     auto const null = sequence.index_end();
-    auto ET_start = null;
-    auto starts_with_EN = false;
+
+    auto state = state_type::idle;
+    auto start = null;
 
     for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
-        if (unicode_bidi_X9(direction)) {
-            continue;
-        }
+        auto const& direction = directions[i];
 
         switch (direction) {
+        case BN:
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            if (state < state_type::found_BN) {
+                state = state_type::found_BN;
+                start = it;
+            }
+            break;
+
         case ET:
-            if (starts_with_EN) {
-                direction = EN;
-            } else if (ET_start == null) {
-                ET_start = it;
+            if (state < state_type::found_ET) {
+                state = state_type::found_ET;
+                if (start == null) {
+                    start = it;
+                }
             }
             break;
 
         case EN:
-            starts_with_EN = true;
-            if (ET_start != null) {
-                for (auto jt = ET_start; jt != it; ++jt) {
-                    auto const j = *jt;
-
-                    assert(j < directions.size());
-                    if (not unicode_bidi_X9(directions[j])) {
-                        directions[j] = EN;
-                    }
+            if (state < state_type::found_EN) {
+                state = state_type::found_EN;
+                if (start == null) {
+                    start = it;
                 }
-                ET_start = null;
             }
             break;
 
         default:
-            starts_with_EN = false;
-            ET_start = null;
+            if (state == state_type::found_EN) {
+                assert(start != null);
+                for (auto jt = start; jt != it; ++jt) {
+                    directions[*jt] = EN;
+                }
+            }
+
+            state = state_type::idle;
+            start = null;
+        }
+    }
+
+    if (state == state_type::found_EN) {
+        assert(start != null);
+        for (auto jt = start; jt != sequence.index_end(); ++jt) {
+            directions[*jt] = EN;
         }
     }
 }
@@ -533,18 +563,62 @@ constexpr void unicode_bidi_W6(sequence<> const& sequence, std::span<unicode_bid
 {
     using enum unicode_bidi_class;
 
+    enum class state_type { idle, found_BN, found_ET_ES_CS };
+
+    auto const null = sequence.index_end();
+
+    auto state = state_type::idle;
+    auto start = null;
+
     for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
-        if (direction == ET or direction == ES or direction == CS) {
-            direction = ON;
+        auto const& direction = directions[i];
+
+        switch (direction) {
+        case BN:
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            if (state < state_type::found_BN) {
+                state = state_type::found_BN;
+                start = it;
+            }
+            break;
+
+        case ET:
+        case ES:
+        case CS:
+            if (state < state_type::found_ET_ES_CS) {
+                state = state_type::found_ET_ES_CS;
+                if (start == null) {
+                    start = it;
+                }
+            }
+            break;
+
+        default:
+            if (state == state_type::found_ET_ES_CS) {
+                assert(start != null);
+                for (auto jt = start; jt != it; ++jt) {
+                    directions[*jt] = ON;
+                }
+            }
+
+            state = state_type::idle;
+            start = null;
+        }
+    }
+
+    if (state == state_type::found_ET_ES_CS) {
+        assert(start != null);
+        for (auto jt = start; jt != sequence.index_end(); ++jt) {
+            directions[*jt] = ON;
         }
     }
 }
 
-constexpr void unicode_bidi_W7(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
+constexpr void
+unicode_bidi_W7(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class sos) noexcept
 {
     using enum unicode_bidi_class;
 
@@ -553,7 +627,7 @@ constexpr void unicode_bidi_W7(sequence<> const& sequence, std::span<unicode_bid
         auto const i = *it;
 
         assert(i < directions.size());
-        auto &direction = directions[i];
+        auto& direction = directions[i];
         switch (direction) {
         case R:
         case L:
@@ -569,37 +643,473 @@ constexpr void unicode_bidi_W7(sequence<> const& sequence, std::span<unicode_bid
     }
 }
 
-constexpr void unicode_bidi_X10(
-    std::span<unicode_bidi_class> directions,
-    std::span<int8_t const> embedding_levels,
-    int8_t paragraph_embedding_level) noexcept
-{
-    using enum unicode_bidi_class;
-    
-    auto const isolated_run_sequence_set = unicode_bidi_BD13(directions, unicode_bidi_BD7(embedding_levels));
+using unicode_bidi_bracket_pair = std::pair<sequence<>::index_iterator, sequence<>::index_iterator>;
 
-    // All sos and eos calculations must be done before W*, N*, I* parts are executed,
-    // since those will change the embedding levels of the characters outside of the
-    // current isolated_run_sequence that the unicode_bidi_X10_sos_eos() depends on.
-    std::vector<unicode_bidi_class> sos_list;
-    std::vector<unicode_bidi_class> eos_list;
-    for (auto& isolated_run_sequence : isolated_run_sequence_set) {
-        auto const first_i = isolated_run_sequence.front().first;
-        auto const last_i = isolated_run_sequence.back().second;
-        auto const before_embedding_level = first_i == 0 ? paragraph_embedding_level : embedding_levels[first_i - 1];
-        auto const after_embedding_level = last_i == embedding_levels.size() ? paragraph_embedding_level : embedding_levels[last_i];
-        auto const first_embedding_level = std::max(embedding_levels[first_i], before_embedding_level);
-        auto const last_embedding_level = std::max(embedding_levels[last_i - 1], after_embedding_level);
-        sos_list.push_back((first_embedding_level % 2) == 1 ? R : L);
-        eos_list.push_back((last_embedding_level % 2) == 1 ? R : L);
+[[nodiscard]]
+constexpr std::vector<unicode_bidi_bracket_pair> unicode_bidi_BD16(
+    sequence<> const& sequence,
+    std::span<unicode_bidi_class const> directions,
+    std::span<unicode_bidi_paired_bracket_type const> brackets,
+    std::span<char32_t const> code_points)
+{
+    struct bracket_start {
+        hi::sequence<>::index_iterator it;
+        char32_t mirrored_bracket;
+    };
+
+    using enum unicode_bidi_class;
+
+    auto pairs = std::vector<unicode_bidi_bracket_pair>{};
+    auto stack = hi::stack<bracket_start, 63>{};
+
+    for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
+        auto const i = *it;
+
+        assert(i < directions.size());
+        auto const direction = directions[i];
+        assert(i < brackets.size());
+        auto const bracket_type = brackets[i];
+        assert(i < code_points.size());
+        auto const code_point = code_points[i];
+
+        if (direction == ON) {
+            switch (bracket_type) {
+            case unicode_bidi_paired_bracket_type::o:
+                if (stack.full()) {
+                    // Stop processing
+                    std::sort(pairs.begin(), pairs.end());
+                    return pairs;
+
+                } else {
+                    // If there is a canonical equivalent of the opening bracket, find it's mirrored glyph
+                    // to compare with the closing bracket.
+                    auto mirrored_glyph = ucd_get_bidi_mirroring_glyph(code_point);
+                    if (auto const canonical_equivalent = ucd_get_decomposition(code_point).canonical_equivalent()) {
+                        assert(ucd_get_bidi_paired_bracket_type(*canonical_equivalent) == unicode_bidi_paired_bracket_type::o);
+
+                        mirrored_glyph = ucd_get_bidi_mirroring_glyph(*canonical_equivalent);
+                    }
+
+                    stack.emplace_back(it, mirrored_glyph);
+                }
+                break;
+
+            case unicode_bidi_paired_bracket_type::c:
+                {
+                    auto const canonical_equivalent = ucd_get_decomposition(code_point).canonical_equivalent();
+                    auto jt = stack.end();
+                    while (jt != stack.begin()) {
+                        --jt;
+
+                        if (jt->mirrored_bracket == code_point or
+                            (canonical_equivalent and jt->mirrored_bracket == *canonical_equivalent)) {
+                            pairs.emplace_back(jt->it, it);
+                            stack.pop_back(jt);
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            default:;
+            }
+        }
     }
 
-    assert(sos_list.size() == isolated_run_sequence_set.size());
-    assert(eos_list.size() == isolated_run_sequence_set.size());
+    std::sort(pairs.begin(), pairs.end());
+    return pairs;
+}
+
+[[nodiscard]] constexpr unicode_bidi_class unicode_bidi_N0_strong(unicode_bidi_class direction)
+{
+    using enum unicode_bidi_class;
+
+    switch (direction) {
+    case L:
+        return L;
+    case R:
+    case EN:
+    case AN:
+        return R;
+    default:
+        return ON;
+    }
+}
+
+[[nodiscard]] constexpr unicode_bidi_class unicode_bidi_N0_preceding_strong_type(
+    std::span<unicode_bidi_class const> directions,
+    sequence<>::index_iterator const& begin,
+    sequence<>::index_iterator const& open_bracket,
+    unicode_bidi_class sos)
+{
+    using enum unicode_bidi_class;
+
+    auto it = open_bracket;
+    while (it != begin) {
+        auto const i = *--it;
+        assert(i < directions.size());
+        if (auto const direction = unicode_bidi_N0_strong(directions[i]); direction != ON) {
+            return direction;
+        }
+    }
+
+    return sos;
+}
+
+[[nodiscard]] constexpr unicode_bidi_class unicode_bidi_N0_enclosed_strong_type(
+    unicode_bidi_bracket_pair const& pair,
+    std::span<unicode_bidi_class const> directions,
+    unicode_bidi_class embedding_direction)
+{
+    using enum unicode_bidi_class;
+
+    auto opposite_direction = ON;
+    for (auto it = pair.first + 1; it != pair.second; ++it) {
+        auto const i = *it;
+
+        assert(i < directions.size());
+        auto const direction = unicode_bidi_N0_strong(directions[i]);
+        if (direction == ON) {
+            continue;
+        }
+        if (direction == embedding_direction) {
+            return direction;
+        }
+        opposite_direction = direction;
+    }
+
+    return opposite_direction;
+}
+
+constexpr void unicode_bidi_N0(
+    sequence<> const& sequence,
+    std::span<unicode_bidi_class> directions,
+    std::span<int8_t const> embedding_levels,
+    std::span<unicode_bidi_paired_bracket_type const> brackets,
+    std::span<char32_t const> code_points,
+    unicode_bidi_class sos)
+{
+    using enum unicode_bidi_class;
+
+    auto const bracket_pairs = unicode_bidi_BD16(sequence, directions, brackets, code_points);
+    auto const first_i = sequence.front().first;
+    assert(first_i < embedding_levels.size());
+    auto const embedding_direction = embedding_levels[first_i] % 2 == 0 ? L : R;
+
+    for (auto& pair : bracket_pairs) {
+        auto pair_direction = unicode_bidi_N0_enclosed_strong_type(pair, directions, embedding_direction);
+        if (pair_direction == ON) {
+            continue;
+        }
+
+        if (pair_direction != embedding_direction) {
+            pair_direction = unicode_bidi_N0_preceding_strong_type(directions, sequence.index_begin(), pair.first, sos);
+
+            if (pair_direction == embedding_direction || pair_direction == ON) {
+                pair_direction = embedding_direction;
+            }
+        }
+
+        directions[*pair.first] = pair_direction;
+        directions[*pair.second] = pair_direction;
+
+        for (auto it = pair.first + 1; it != pair.second; ++it) {
+            auto const i = *it;
+
+            assert(i < code_points.size());
+            if (ucd_get_bidi_class(code_points[i]) != NSM) {
+                break;
+            }
+
+            assert(i < directions.size());
+            directions[i] = pair_direction;
+        }
+
+        for (auto it = pair.second + 1; it != sequence.index_end(); ++it) {
+            auto const i = *it;
+
+            assert(i < code_points.size());
+            if (ucd_get_bidi_class(code_points[i]) != NSM) {
+                break;
+            }
+
+            assert(i < directions.size());
+            directions[i] = pair_direction;
+        }
+    }
+}
+
+constexpr void unicode_bidi_N1(
+    sequence<> const& sequence,
+    std::span<unicode_bidi_class> directions,
+    unicode_bidi_class sos,
+    unicode_bidi_class eos)
+{
+    using enum unicode_bidi_class;
+
+    enum class state_type { idle, found_BD, found_NI };
+
+    auto const null = sequence.index_end();
+
+    auto start = null;
+    auto state = state_type::idle;
+    auto direction_before_NI = sos;
+    for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
+        auto const i = *it;
+
+        assert(i < directions.size());
+        auto& direction = directions[i];
+
+        switch (direction) {
+        case BN:
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            if (state < state_type::found_BD) {
+                state = state_type::found_BD;
+                if (start == null) {
+                    start = it;
+                }
+            }
+            break;
+
+        case B:
+        case S:
+        case WS:
+        case ON:
+        case FSI:
+        case LRI:
+        case RLI:
+        case PDI:
+            if (state < state_type::found_NI) {
+                state = state_type::found_NI;
+                if (start == null) {
+                    start = it;
+                }
+            }
+            break;
+
+        default:
+            if (state == state_type::found_NI) {
+                auto const direction_after_NI = (direction == EN or direction == AN) ? R : direction;
+                auto const same_direction = direction_before_NI == direction_after_NI;
+                auto const direction_before_NI_is_strong = direction_before_NI == L or direction_before_NI == R;
+                auto const direction_after_NI_is_strong = direction_after_NI == L or direction_after_NI == R;
+
+                if (direction_before_NI_is_strong and direction_after_NI_is_strong and same_direction) {
+                    assert(start != null);
+                    for (auto jt = start; jt != it; ++jt) {
+                        auto const j = *jt;
+
+                        assert(j < directions.size());
+                        directions[j] = direction_before_NI;
+                    }
+                }
+            }
+
+            state = state_type::idle;
+            start = null;
+            direction_before_NI = (direction == EN or direction == AN) ? R : direction;
+        }
+    }
+
+    // Handle the case where the last character is a NI.
+    if (state == state_type::found_NI) {
+        auto const same_direction = direction_before_NI == eos;
+        auto const direction_before_NI_is_strong = direction_before_NI == L or direction_before_NI == R;
+
+        if (direction_before_NI_is_strong and same_direction) {
+            assert(start != null);
+            for (auto it = start; it != sequence.index_end(); ++it) {
+                auto const i = *it;
+
+                assert(i < directions.size());
+                directions[i] = direction_before_NI;
+            }
+        }
+    }
+}
+
+constexpr void
+unicode_bidi_N2(sequence<> const& sequence, std::span<unicode_bidi_class> directions, unicode_bidi_class embedding_direction)
+{
+    using enum unicode_bidi_class;
+
+    enum class state_type { idle, found_BN, found_NI };
+
+    auto const null = sequence.index_end();
+
+    auto start = null;
+    auto state = state_type::idle;
+    for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
+        auto const i = *it;
+
+        assert(i < directions.size());
+        auto& direction = directions[i];
+
+        switch (direction) {
+        case BN:
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            if (state < state_type::found_BN) {
+                state = state_type::found_BN;
+                if (start == null) {
+                    start = it;
+                }
+            }
+            break;
+
+        case B:
+        case S:
+        case WS:
+        case ON:
+        case FSI:
+        case LRI:
+        case RLI:
+        case PDI:
+            if (state < state_type::found_NI) {
+                state = state_type::found_NI;
+                if (start == null) {
+                    start = it;
+                }
+            }
+            break;
+
+        default:
+            if (state == state_type::found_NI) {
+                assert(start != null);
+                for (auto jt = start; jt != it; ++jt) {
+                    auto const j = *jt;
+
+                    assert(j < directions.size());
+                    directions[j] = embedding_direction;
+                }
+            }
+
+            state = state_type::idle;
+            start = null;
+        }
+    }
+
+    if (state == state_type::found_NI) {
+        assert(start != null);
+        for (auto jt = start; jt != sequence.index_end(); ++jt) {
+            auto const j = *jt;
+
+            assert(j < directions.size());
+            directions[j] = embedding_direction;
+        }
+    }
+}
+
+constexpr void
+unicode_bidi_I1_I2(sequence<> const& sequence, std::span<unicode_bidi_class> directions, std::span<int8_t> embedding_levels)
+{
+    using enum unicode_bidi_class;
+
+    assert(sequence.size() == embedding_levels.size());
+
+    for (auto it = sequence.index_begin(); it != sequence.index_end(); ++it) {
+        auto const i = *it;
+        assert(i < directions.size());
+        auto const& direction = directions[i];
+        assert(i < embedding_levels.size());
+        auto& embedding_level = embedding_levels[i];
+
+        if ((embedding_level % 2) == 0) {
+            // I1
+            if (direction == R) {
+                embedding_level += 1;
+            } else if (direction == AN or direction == EN) {
+                embedding_level += 2;
+            }
+        } else {
+            // I2
+            if (direction == L or direction == AN or direction == EN) {
+                embedding_level += 1;
+            }
+        }
+    }
+}
+
+constexpr std::pair<unicode_bidi_class, unicode_bidi_class> unicode_bidi_X10_sos_eos(
+    std::span<unicode_bidi_class const> directions,
+    std::span<int8_t const> embedding_levels,
+    int8_t paragraph_embedding_level,
+    size_t first_i,
+    size_t last_i)
+{
+    using enum unicode_bidi_class;
+
+    auto const before_embedding_level = [&] {
+        for (auto i = first_i; i != 0; --i) {
+            if (directions[i - 1] != BN) {
+                return embedding_levels[i - 1];
+            }
+        }
+        return paragraph_embedding_level;
+    }();
+
+    auto const begin_embedding_level = [&] {
+        for (auto i = first_i; i != last_i; ++i) {
+            if (directions[i] != BN) {
+                return embedding_levels[i];
+            }
+        }
+        return paragraph_embedding_level;
+    }();
+
+    auto const last_embedding_level = [&] {
+        for (auto i = last_i; i != first_i; --i) {
+            if (directions[i - 1] != BN) {
+                return embedding_levels[i - 1];
+            }
+        }
+        return paragraph_embedding_level;
+    }();
+
+    auto const after_embedding_level = [&] {
+        for (auto i = last_i; i != embedding_levels.size(); ++i) {
+            if (directions[i] != BN) {
+                return embedding_levels[i];
+            }
+        }
+        return paragraph_embedding_level;
+    }();
+
+    auto const sos = std::max(before_embedding_level, begin_embedding_level) % 2 == 0 ? R : L;
+    auto const eos = std::max(last_embedding_level, after_embedding_level) % 2 == 0 ? R : L;
+    return {sos, eos};
+}
+
+constexpr void unicode_bidi_X10(
+    std::span<unicode_bidi_class> directions,
+    std::span<int8_t> embedding_levels,
+    std::span<unicode_bidi_paired_bracket_type const> brackets,
+    std::span<char32_t const> code_points,
+    int8_t paragraph_embedding_level)
+{
+    using enum unicode_bidi_class;
+
+    auto const isolated_run_sequence_set = unicode_bidi_BD13(directions, unicode_bidi_BD7(embedding_levels));
+
+    // All sos and eos calculations must be done before I* parts are executed,
+    // since those will change the embedding levels of the characters outside of the
+    // current isolated_run_sequence that the unicode_bidi_X10_sos_eos() depends on.
+    auto sos_eos = std::vector<std::pair<unicode_bidi_class, unicode_bidi_class>>{};
+    sos_eos.reserve(isolated_run_sequence_set.size());
+    for (auto& isolated_run_sequence : isolated_run_sequence_set) {
+        sos_eos.push_back(unicode_bidi_X10_sos_eos(
+            directions,
+            embedding_levels,
+            paragraph_embedding_level,
+            isolated_run_sequence.front().first,
+            isolated_run_sequence.back().second));
+    }
+
+    assert(sos_eos.size() == isolated_run_sequence_set.size());
     for (auto i = size_t{0}; i != isolated_run_sequence_set.size(); ++i) {
-        auto const &isolated_run_sequence = isolated_run_sequence_set[i];
-        auto const sos = sos_list[i];
-        auto const eos = eos_list[i];
+        auto const& isolated_run_sequence = isolated_run_sequence_set[i];
+        auto const [sos, eos] = sos_eos[i];
+        auto const embedding_level = embedding_levels[isolated_run_sequence.front().first];
+        auto const embedding_direction = (embedding_level % 2) == 0 ? L : R;
 
         unicode_bidi_W1(isolated_run_sequence, directions, sos);
         unicode_bidi_W2(isolated_run_sequence, directions, sos);
@@ -608,11 +1118,126 @@ constexpr void unicode_bidi_X10(
         unicode_bidi_W5(isolated_run_sequence, directions);
         unicode_bidi_W6(isolated_run_sequence, directions);
         unicode_bidi_W7(isolated_run_sequence, directions, sos);
-        unicode_bidi_N0(isolated_run_sequence, context);
-        unicode_bidi_N1(isolated_run_sequence);
-        unicode_bidi_N2(isolated_run_sequence);
-        unicode_bidi_I1_I2(isolated_run_sequence);
+        unicode_bidi_N0(isolated_run_sequence, directions, embedding_levels, brackets, code_points, sos);
+        unicode_bidi_N1(isolated_run_sequence, directions, sos, eos);
+        unicode_bidi_N2(isolated_run_sequence, directions, embedding_direction);
+        unicode_bidi_I1_I2(isolated_run_sequence, directions, embedding_levels);
     }
 }
 
+[[nodiscard]] constexpr std::pair<int8_t, int8_t> unicode_bidi_L1(
+    std::span<unicode_bidi_class const> directions,
+    std::span<int8_t> embedding_levels,
+    int8_t paragraph_embedding_level) noexcept
+{
+    using enum unicode_bidi_class;
+
+    assert(directions.size() == embedding_levels.size());
+
+    auto lowest_odd = std::numeric_limits<int8_t>::max();
+    auto highest = paragraph_embedding_level;
+    auto preceding_is_segment = true;
+
+    auto i = directions.size();
+    while (i != 0) {
+        --i;
+
+        auto const& direction = directions[i];
+        auto& embedding_level = embedding_levels[i];
+
+        if (direction == B or direction == S) {
+            embedding_level = paragraph_embedding_level;
+            preceding_is_segment = true;
+
+        } else if (preceding_is_segment && (direction == WS or is_isolate_formatter(direction))) {
+            embedding_level = paragraph_embedding_level;
+            preceding_is_segment = true;
+
+        } else {
+            highest = std::max(highest, embedding_level);
+            if ((embedding_level % 2) == 1) {
+                lowest_odd = std::min(lowest_odd, embedding_level);
+            }
+
+            preceding_is_segment = false;
+        }
+    }
+
+    if ((paragraph_embedding_level % 2) == 1) {
+        lowest_odd = std::min(lowest_odd, paragraph_embedding_level);
+    }
+
+    if (lowest_odd > highest) {
+        // If there where no odd levels below the highest level
+        if (highest % 2 == 1) {
+            // We need to reverse at least once if the highest was odd.
+            lowest_odd = highest;
+        } else {
+            // We need to reverse at least twice if the highest was even.
+            // This may yield a negative lowest_odd.
+            lowest_odd = highest - 1;
+        }
+    }
+
+    return {lowest_odd, highest};
+}
+
+constexpr std::vector<size_t>
+unicode_bidi_L2(std::span<int8_t const> embedding_levels, int8_t lowest_odd, int8_t highest) noexcept
+{
+    auto r = std::vector<size_t>{};
+    r.reserve(embedding_levels.size());
+    for (auto i = size_t{0}; i != embedding_levels.size(); ++i) {
+        r.push_back(i);
+    }
+
+    for (int8_t level = highest; level >= lowest_odd; --level) {
+        auto const null = embedding_levels.size();
+        auto sequence_start = null;
+        for (auto i = size_t{0}; i != embedding_levels.size(); ++i) {
+            auto const& embedding_level = embedding_levels[i];
+
+            if (sequence_start == null) {
+                if (embedding_level >= level) {
+                    sequence_start = i;
+                }
+
+            } else if (embedding_level < level) {
+                std::reverse(r.begin() + sequence_start, r.begin() + i);
+                sequence_start = null;
+            }
+        }
+
+        // Reverse the last sequence if it was not closed.
+        if (sequence_start != null) {
+            std::reverse(r.begin() + sequence_start, r.end());
+        }
+    }
+
+    return r;
+}
+
+// unicode_bidi_L3() is not implemented due to the algorithm working on only
+// the base code-point of each grapheme.
+
+constexpr void unicode_bidi_L4(
+    std::span<unicode_bidi_class const> directions,
+    std::span<unicode_bidi_paired_bracket_type const> brackets,
+    std::span<char32_t> code_points) noexcept
+{
+    using enum unicode_bidi_class;
+
+    assert(directions.size() == brackets.size());
+    assert(directions.size() == code_points.size());
+
+    for (auto i = size_t{0}; i != directions.size(); ++i) {
+        auto const& direction = directions[i];
+        auto const& bracket = brackets[i];
+        auto& code_point = code_points[i];
+
+        if (bracket != unicode_bidi_paired_bracket_type::n and direction == R) {
+            code_point = ucd_get_bidi_mirroring_glyph(code_point);
+        }
+    }
+}
 }
