@@ -1188,6 +1188,7 @@ constexpr void unicode_bidi_L1(
     auto state = state_type::idle;
     auto start = null;
 
+    auto preceding_character_level = paragraph_embedding_level; 
     for (auto i = size_t{0}; i != original_directions.size(); ++i) {
         auto const& direction = original_directions[i];
         auto& embedding_level = embedding_levels[i];
@@ -1200,12 +1201,20 @@ constexpr void unicode_bidi_L1(
         case PDF:
         case BN:
             // X9. Retaining BNs and Explicit Formatting Characters.
+            // All Explicit Formatting Characters are added to the sequence
+            // of whitespace characters preceding a segment separator, paragraph
+            // separator, or end of the line.
             if (state < state_type::found_BN) {
                 state = state_type::found_BN;
                 if (start == null) {
                     start = i;
                 }
             }
+
+            // X9. Retaining BNs and Explicit Formatting Characters.
+            // All Explicit Formatting Characters embedding level is set to the
+            // previous character's embedding level.
+            embedding_level = preceding_character_level;
             break;
 
         case WS:
@@ -1235,6 +1244,8 @@ constexpr void unicode_bidi_L1(
             state = state_type::idle;
             start = null;
         }
+
+        preceding_character_level = embedding_level;
     }
 
     // Handle sequence of WS, FSI, LRI, RLI, PDI at the end of a line.
@@ -1246,7 +1257,7 @@ constexpr void unicode_bidi_L1(
     }
 }
 
-constexpr std::vector<size_t> unicode_bidi_L2(std::span<int8_t const> embedding_levels) noexcept
+[[nodiscard]] constexpr std::vector<size_t> unicode_bidi_L2(std::span<int8_t const> embedding_levels) noexcept
 {
     auto highest = int8_t{0};
     auto lowest_odd = int8_t{127};

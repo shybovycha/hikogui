@@ -118,6 +118,7 @@ hi::generator<unicode_bidi_test> parse_bidi_test(int test_line_nr = -1)
         } else if (line.starts_with("@Reorder:")) {
             reorder = parse_bidi_test_reorder(line.substr(9));
         } else {
+            assert(reorder.size() <= levels.size());
             auto data = parse_bidi_test_data_line(line, levels, reorder, line_nr);
             if (test_line_nr == -1 || line_nr == test_line_nr) {
                 co_yield data;
@@ -213,20 +214,16 @@ TEST_CASE(bidi_test)
                 }
             }
 
-            //auto const display_order = unicode_bidi_L2(embedding_levels, lowest_odd, highest);
+            auto const display_order = hi::unicode_bidi_L2(embedding_levels);
 
-            // auto const display_order = hi::unicode_bidi_to_display_order(
-            //     line_lengths,
-            //     embedding_levels_paragraphs.begin(),
-            //     test.input.begin(),
-            //     get_code_point);
-            //
-            // auto index = 0;
-            // for (auto it = first; it != last; ++it, ++index) {
-            //    auto const expected_input_index = test.reorder[index];
-            //
-            //    REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
-            //}
+            REQUIRE(display_order.size() >= test.reorder.size());
+            auto t_i = size_t{0};
+            for (auto r_i = size_t{0}; r_i != display_order.size(); ++r_i) {
+                auto const index = display_order[r_i];
+                if (test.levels[index] != -1) {
+                    REQUIRE(index == test.reorder[t_i++]);
+                }
+            }
         }
 
 #ifndef NDEBUG
