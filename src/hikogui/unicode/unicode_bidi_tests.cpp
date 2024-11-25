@@ -187,40 +187,52 @@ hi::generator<unicode_bidi_test> parse_bidi_test(int test_line_nr = -1)
 
 TEST_CASE(bidi_test)
 {
-    for (auto test : parse_bidi_test()) {
+    for (auto const test : parse_bidi_test()) {
         for (auto paragraph_direction : test.get_paragraph_directions()) {
+            // This test will:
+            // - Pretend that the input is a single paragraph.
+            // - Pretend that the input is a single line.
+            // - Pretend that the input contains no paired brackets.
+            auto const original_directions = test.input;
+            auto directions = original_directions;
+            auto embedding_levels = std::vector<int8_t>(directions.size(), int8_t{0});
+            auto brackets =
+                std::vector<hi::unicode_bidi_paired_bracket_type>(directions.size(), hi::unicode_bidi_paired_bracket_type::n);
+            auto code_points = std::vector<char32_t>(directions.size(), U'\0');
 
-            //auto const embedding_levels_paragraphs = hi::unicode_bidi_get_embedding_levels(test.input.begin(), test.input.end(), paragraph_direction, get_code_point);
-            //auto const line_lengths = std::vector<size_t>{test.input.size()};
-            //auto const embedding_levels = hi::unicode_bidi_L1(line_lengths, embedding_levels_paragraphs.begin(), test.input.begin(), [](auto x) { return x; });
-//
-            //// We are using the index from the iterator to find embedded levels
-            //// in input-order. We ignore all elements that where removed by X9.
-            //REQUIRE(embedding_levels.size() == test.levels.size());
-            //for (auto i = 0; i != embedding_levels.size(); ++i) {
-            //    if (test.levels[i] != -1) {
-            //        REQUIRE(embedding_levels[i] == test.levels[i]);
-            //    }
-            //}
+            auto paragraph_embedding_levels = unicode_bidi_P1(directions, embedding_levels, brackets, code_points, paragraph_direction);
+            REQUIRE(paragraph_embedding_levels.size() == 1);
+            unicode_bidi_L1(original_directions, embedding_levels, paragraph_embedding_levels[0]);
 
-            //auto const display_order = hi::unicode_bidi_to_display_order(
-            //    line_lengths,
-            //    embedding_levels_paragraphs.begin(),
-            //    test.input.begin(),
-            //    get_code_point);
-//
-            //auto index = 0;
-            //for (auto it = first; it != last; ++it, ++index) {
+            // We are using the index from the iterator to find embedded levels
+            // in input-order. We ignore all elements that where removed by X9.
+            REQUIRE(embedding_levels.size() == test.levels.size());
+            for (auto i = 0; i != embedding_levels.size(); ++i) {
+                if (test.levels[i] != -1) {
+                    REQUIRE(embedding_levels[i] == test.levels[i]);
+                }
+            }
+
+            //auto const display_order = unicode_bidi_L2(embedding_levels, lowest_odd, highest);
+
+            // auto const display_order = hi::unicode_bidi_to_display_order(
+            //     line_lengths,
+            //     embedding_levels_paragraphs.begin(),
+            //     test.input.begin(),
+            //     get_code_point);
+            //
+            // auto index = 0;
+            // for (auto it = first; it != last; ++it, ++index) {
             //    auto const expected_input_index = test.reorder[index];
-//
+            //
             //    REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
             //}
         }
 
 #ifndef NDEBUG
-        //if (test.line_nr > 10'000) {
-        //    break;
-        //}
+        // if (test.line_nr > 10'000) {
+        //     break;
+        // }
 #endif
     }
 }
@@ -315,60 +327,60 @@ hi::generator<unicode_bidi_character_test> parse_bidi_character_test(int test_li
     }
 }
 
-//TEST_CASE(bidi_character_test)
+// TEST_CASE(bidi_character_test)
 //{
-//    for (auto test : parse_bidi_character_test()) {
-//        auto test_parameters = hi::unicode_bidi_context{};
-//        test_parameters.enable_mirrored_brackets = true;
-//        test_parameters.enable_line_separator = true;
-//        test_parameters.remove_explicit_embeddings = false;
-//        // clang-format off
-//        test_parameters.direction_mode =
-//            test.paragraph_direction == hi::unicode_bidi_class::L ? hi::unicode_bidi_context::mode_type::LTR :
-//            test.paragraph_direction == hi::unicode_bidi_class::R ? hi::unicode_bidi_context::mode_type::RTL :
-//            hi::unicode_bidi_context::mode_type::auto_LTR;
-//        // clang-format on
+//     for (auto test : parse_bidi_character_test()) {
+//         auto test_parameters = hi::unicode_bidi_context{};
+//         test_parameters.enable_mirrored_brackets = true;
+//         test_parameters.enable_line_separator = true;
+//         test_parameters.remove_explicit_embeddings = false;
+//         // clang-format off
+//         test_parameters.direction_mode =
+//             test.paragraph_direction == hi::unicode_bidi_class::L ? hi::unicode_bidi_context::mode_type::LTR :
+//             test.paragraph_direction == hi::unicode_bidi_class::R ? hi::unicode_bidi_context::mode_type::RTL :
+//             hi::unicode_bidi_context::mode_type::auto_LTR;
+//         // clang-format on
 //
-//        auto input = test.get_input();
-//        auto first = begin(input);
-//        auto last = end(input);
+//         auto input = test.get_input();
+//         auto first = begin(input);
+//         auto last = end(input);
 //
-//        auto const [new_last, paragraph_directions] = hi::unicode_bidi(
-//            first,
-//            last,
-//            [](auto const& x) {
-//                return x.code_point;
-//            },
-//            [](auto& x, auto const& code_point) {
-//                x.code_point = code_point;
-//            },
-//            [](auto& x, auto bidi_class) {},
-//            test_parameters);
+//         auto const [new_last, paragraph_directions] = hi::unicode_bidi(
+//             first,
+//             last,
+//             [](auto const& x) {
+//                 return x.code_point;
+//             },
+//             [](auto& x, auto const& code_point) {
+//                 x.code_point = code_point;
+//             },
+//             [](auto& x, auto bidi_class) {},
+//             test_parameters);
 //
-//        last = new_last;
-//        // We are using the index from the iterator to find embedded levels
-//        // in input-order. We ignore all elements that where removed by X9.
-//        // for (auto it = first; it != last; ++it) {
-//        //    auto const expected_embedding_level = test.levels[it->index];
-//        //
-//        //    ASSERT_TRUE(expected_embedding_level == -1 || expected_embedding_level == it->embedding_level);
-//        //}
+//         last = new_last;
+//         // We are using the index from the iterator to find embedded levels
+//         // in input-order. We ignore all elements that where removed by X9.
+//         // for (auto it = first; it != last; ++it) {
+//         //    auto const expected_embedding_level = test.levels[it->index];
+//         //
+//         //    ASSERT_TRUE(expected_embedding_level == -1 || expected_embedding_level == it->embedding_level);
+//         //}
 //
-//        REQUIRE(std::distance(first, last) == std::ssize(test.resolved_order));
+//         REQUIRE(std::distance(first, last) == std::ssize(test.resolved_order));
 //
-//        auto index = 0;
-//        for (auto it = first; it != last; ++it, ++index) {
-//            auto const expected_input_index = test.resolved_order[index];
+//         auto index = 0;
+//         for (auto it = first; it != last; ++it, ++index) {
+//             auto const expected_input_index = test.resolved_order[index];
 //
-//            REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
-//        }
+//             REQUIRE((expected_input_index == -1 or expected_input_index == it->index));
+//         }
 //
-//#ifndef NDEBUG
-//        if (test.line_nr > 10'000) {
-//            break;
-//        }
-//#endif
-//    }
-//}
+// #ifndef NDEBUG
+//         if (test.line_nr > 10'000) {
+//             break;
+//         }
+// #endif
+//     }
+// }
 
 }; // TEST_SUITE(unicode_bidi)

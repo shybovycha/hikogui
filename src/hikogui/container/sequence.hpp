@@ -37,7 +37,9 @@ class sequence : public std::vector<Pair> {
 private:
     [[nodiscard]] consteval static auto pair_index_type() noexcept
     {
-        auto const [first, _] = std::declval<Pair>();
+        auto const [first, second] = Pair{};
+        static_assert(std::is_integral_v<decltype(first)>);
+        static_assert(std::is_same_v<decltype(first), decltype(second)>);
         return first;
     }
 
@@ -180,6 +182,13 @@ public:
     };
 
     using super::super;
+
+    [[nodiscard]] constexpr size_t index_size() const
+    {
+        return std::accumulate(this->begin(), this->end(), size_t{0}, [](size_t acc, auto const& x) {
+            return acc + (x.second - x.first);
+        });
+    }
 
     [[nodiscard]] constexpr index_iterator index_begin() const noexcept
     {
