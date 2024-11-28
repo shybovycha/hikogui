@@ -1,386 +1,449 @@
-
 @font-face {
-    font-family: 'Lato';
-    src: url("https://hikogui.org/assets/fonts/Lato-Regular.eot");
-    src: url("https://hikogui.org/assets/fonts/Lato-Regular.eot?#iefix") format("embedded-opentype"), url("https://hikogui.org/assets/fonts/Lato-Regular.woff") format("woff"), url("https://hikogui.org/assets/fonts/Lato-Regular.ttf") format("truetype"), url("https://hikogui.org/assets/fonts/Lato-Regular.svg#OpenSansLight") format("svg");
-    font-weight: normal;
-    font-style: normal;
+  font-family: Lato;
+  src: url(https://hikogui.org/assets/fonts/Lato-Regular.eot);
+  src: url(https://hikogui.org/assets/fonts/Lato-Regular.eot?#iefix) format(embedded-opentype), url(https://hikogui.org/assets/fonts/Lato-Regular.woff) format(woff), url(https://hikogui.org/assets/fonts/Lato-Regular.ttf) format(truetype), url(https://hikogui.org/assets/fonts/Lato-Regular.svg#OpenSansLight) format(svg);
+  font-weight: 400;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Lato';
-    src: url("https://hikogui.org/assets/fonts/Lato-Light.eot");
-    src: url("https://hikogui.org/assets/fonts/Lato-Light.eot?#iefix") format("embedded-opentype"), url("https://hikogui.org/assets/fonts/Lato-Light.woff") format("woff"), url("https://hikogui.org/assets/fonts/Lato-Light.ttf") format("truetype"), url("https://hikogui.org/assets/fonts/Lato-Light.svg#OpenSansLight") format("svg");
-    font-weight: 300;
-    font-style: normal;
+  font-family: Lato;
+  src: url(https://hikogui.org/assets/fonts/Lato-Light.eot);
+  src: url(https://hikogui.org/assets/fonts/Lato-Light.eot?#iefix) format(embedded-opentype), url(https://hikogui.org/assets/fonts/Lato-Light.woff) format(woff), url(https://hikogui.org/assets/fonts/Lato-Light.ttf) format(truetype), url(https://hikogui.org/assets/fonts/Lato-Light.svg#OpenSansLight) format(svg);
+  font-weight: 300;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Lato';
-    src: url("https://hikogui.org/assets/fonts/Lato-LightItalic.eot");
-    src: url("https://hikogui.org/assets/fonts/Lato-LightItalic.eot?#iefix") format("embedded-opentype"), url("https://hikogui.org/assets/fonts/Lato-LightItalic.woff") format("woff"), url("https://hikogui.org/assets/fonts/Lato-LightItalic.ttf") format("truetype"), url("https://hikogui.org/assets/fonts/Lato-LightItalic.svg#OpenSansLight") format("svg");
-    font-weight: 300;
-    font-style: italic;
+  font-family: Lato;
+  src: url(https://hikogui.org/assets/fonts/Lato-LightItalic.eot);
+  src: url(https://hikogui.org/assets/fonts/Lato-LightItalic.eot?#iefix) format(embedded-opentype), url(https://hikogui.org/assets/fonts/Lato-LightItalic.woff) format(woff), url(https://hikogui.org/assets/fonts/Lato-LightItalic.ttf) format(truetype), url(https://hikogui.org/assets/fonts/Lato-LightItalic.svg#OpenSansLight) format(svg);
+  font-weight: 300;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'GentiumBasic';
-    src: url("https://hikogui.org/assets/fonts/GentiumBasic-Italic.eot");
-    src: url("https://hikogui.org/assets/fonts/GentiumBasic-Italic.eot?#iefix") format("embedded-opentype"), url("https://hikogui.org/assets/fonts/GentiumBasic-Italic.woff") format("woff"), url("https://hikogui.org/assets/fonts/GentiumBasic-Italic.ttf") format("truetype"), url("https://hikogui.org/assets/fonts/GentiumBasic-Italic.svg#OpenSansLight") format("svg");
-    font-weight: normal;
-    font-style: italic;
+  font-family: GentiumBasic;
+  src: url(https://hikogui.org/assets/fonts/GentiumBasic-Italic.eot);
+  src: url(https://hikogui.org/assets/fonts/GentiumBasic-Italic.eot?#iefix) format(embedded-opentype), url(https://hikogui.org/assets/fonts/GentiumBasic-Italic.woff) format(woff), url(https://hikogui.org/assets/fonts/GentiumBasic-Italic.ttf) format(truetype), url(https://hikogui.org/assets/fonts/GentiumBasic-Italic.svg#OpenSansLight) format(svg);
+  font-weight: 400;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Montserrat';
-    src: url("https://hikogui.org/assets/fonts/Montserrat-Bold.eot");
-    src: url("https://hikogui.org/assets/fonts/Montserrat-Bold.eot?#iefix") format("embedded-opentype"), url("https://hikogui.org/assets/fonts/Montserrat-Bold.woff") format("woff"), url("https://hikogui.org/assets/fonts/Montserrat-Bold.ttf") format("truetype"), url("https://hikogui.org/assets/fonts/Montserrat-Bold.svg#OpenSansLight") format("svg");
-    font-weight: bold;
-    font-style: normal;
+  font-family: Montserrat;
+  src: url(https://hikogui.org/assets/fonts/Montserrat-Bold.eot);
+  src: url(https://hikogui.org/assets/fonts/Montserrat-Bold.eot?#iefix) format(embedded-opentype), url(https://hikogui.org/assets/fonts/Montserrat-Bold.woff) format(woff), url(https://hikogui.org/assets/fonts/Montserrat-Bold.ttf) format(truetype), url(https://hikogui.org/assets/fonts/Montserrat-Bold.svg#OpenSansLight) format(svg);
+  font-weight: 700;
+  font-style: normal;
 }
 
-body {
-    background: #252525;
-    color: #dddddd;
+@media (prefers-color-scheme: dark) {
+  var(--page-background-color, #252525);
+  var(--page-foreground-color, #ddd);
+  var(--fragment-background-color, #111);
 }
 
 div.textblock {
-    width: 650px;
+  width: 650px;
 }
 
 .directory tr.even {
-    background: #1c1c1c;
+  background: #1c1c1c;
 }
 
 .classindex dl.odd {
-    background: #1c1c1c;
+  background: #1c1c1c;
 }
 
 .alphachar a {
-    color: #dddddd;
-    text-decoration: none;
+  color: #ddd;
+  text-decoration: none;
 }
 
-    .alphachar a:visited {
-        color: #dddddd;
-        text-decoration: none;
-    }
+.alphachar a:visited {
+  color: darken(#ddd, 10%);
+  /* Darken the main color for links */
+  text-decoration: none;
+}
 
-body, table, div, p, dl {
-    font-family: Lato;
-    font-size: 12pt;
-    font-style: normal;
-    font-weight: 300;
+body,
+table,
+div,
+p,
+dl {
+  font-family: Lato;
+  font-style: normal;
+  font-weight: 300;
 }
 
 b {
-    font-weight: normal;
+  font-weight: 400;
 }
 
 em {
-    color: #fffc79;
+  color: #fffc79;
 }
 
 ul {
-    padding-left: 25px;
-    list-style-image: url(https://hikogui.org/assets/images/bullet.png);
+  padding-left: 25px;
+  list-style-image: url(https://hikogui.org/assets/images/bullet.png);
 }
 
 .navpath ul {
-    list-style: none;
+  list-style: none;
 }
 
 dt {
-    font-weight: normal;
+  font-weight: 400;
 }
 
 dd {
-    font-weight: normal;
+  font-weight: 400;
 }
 
 hr {
-    border-top: 1px solid #ca5201;
+  border-top: 1px solid #ca5201;
 }
 
 div hr {
-    visibility: hidden;
-}
-
-div.header {
-    background: #252525;
-    border: 0;
+  visibility: hidden;
 }
 
 div.fragment {
-    background: #111111;
-    padding: 5px;
-    border: 1px solid #444444;
+  padding: 5px;
+  border: 1px solid #444;
 }
 
 span.lineno {
-    background: #000000;
+  background: #000;
 }
 
 span.stringliteral {
-    color: #cc0000;
+  color: #c00;
 }
 
 span.mlabel {
-    background: #ca5201;
-    color: #fffc79;
-    border-color: #882200;
-    font-family: Lato;
-    font-size: 12pt;
-    font-style: normal;
-    font-weight: 300;
+  background: #ca5201;
+  color: #fffc79;
+  border-color: #820;
+  font-family: Lato;
+  font-size: 12pt;
+  font-style: normal;
+  font-weight: 300;
 }
 
 a {
-    color: #ca5201;
-    text-decoration: underline dashed;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 1px;
+  color: #ca5201;
 }
 
 span.permalink a {
-    text-decoration: none;
+  text-decoration: none;
 }
 
 .contents a:visited {
-    color: #ca5201;
+  color: darken(color: #ca5201, 10%);
+  /* Darken the main color for links */
 }
 
-a.code, a.code:visited, a.line, a.line:visited {
-    color: #ca5201;
+a.code,
+a.code:visited,
+a.line,
+a.line:visited {
+  color: darken(#ca5201, 10%);
+  /* Darken the main color for links */
 }
 
-a.codeRef, a.codeRef:visited, a.lineRef, a.lineRef:visited {
-    color: #ca5201;
+a.codeRef,
+a.codeRef:visited,
+a.lineRef,
+a.lineRef:visited {
+  color: darken(#ca5201, 10%);
+  /* Darken the main color for links */
 }
 
 a.elRef {
-    color: #cccccc;
-    text-decoration-color: blue;
 }
 
-    a.elRef:visited {
-        color: #cccccc;
-        text-decoration-color: blue;
-    }
-
+a.elRef:visited {
+}
 
 a.el {
-    font-weight: normal;
+  font-weight: 400;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    font-family: Montserrat;
-    margin-bottom: 0;
-    font-weight: normal;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Montserrat;
+  margin-bottom: 0;
+  font-weight: 400;
 }
 
 body {
-    counter-reset: section1;
+  counter-reset: section1;
 }
 
 h1 {
-    counter-reset: section2;
-    font-size: 24px;
+  counter-reset: section2;
+  font-size: 24px;
 }
 
 h2 {
-    counter-reset: section3;
-    font-size: 20px;
+  counter-reset: section3;
+  font-size: 20px;
 }
 
 h3 {
-    counter-reset: section4;
-    font-size: 18px;
+  counter-reset: section4;
+  font-size: 18px;
 }
 
 h4 {
-    counter-reset: section5;
-    font-size: 16px;
+  counter-reset: section5;
+  font-size: 16px;
 }
 
 h5 {
-    counter-reset: section6;
-    font-size: 16px;
+  counter-reset: section6;
+  font-size: 16px;
 }
 
 h6 {
-    font-size: 16px;
+  font-size: 16px;
 }
 
-
 div.PageDoc h1::before {
-    counter-increment: section1;
-    content: counter(section1) ".";
+  counter-increment: section1;
+  content: counter(section1) ".";
 }
 
 div.PageDoc h2::before {
-    counter-increment: section2;
-    content: counter(section1) "." counter(section2) ".";
+  counter-increment: section2;
+  content: counter(section1) "." counter(section2) ".";
 }
 
 div.PageDoc h3::before {
-    counter-increment: section3;
-    content: counter(section1) "." counter(section2) "." counter(section3) ".";
+  counter-increment: section3;
+  content: counter(section1) "." counter(section2) "." counter(section3) ".";
 }
 
 div.PageDoc h4::before {
-    counter-increment: section4;
-    content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) ".";
+  counter-increment: section4;
+  content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) ".";
 }
 
 div.PageDoc h5::before {
-    counter-increment: section5;
-    content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) "." counter(section5) ".";
+  counter-increment: section5;
+  content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) "." counter(section5) ".";
 }
 
 div.PageDoc h6::before {
-    counter-increment: section6;
-    content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) "." counter(section5) "." counter(section6) ".";
+  counter-increment: section6;
+  content: counter(section1) "." counter(section2) "." counter(section3) "." counter(section4) "." counter(section5) "." counter(section6) ".";
+}
+
+div.headertitle {
+  padding: 5px 5px 5px 0px;
+}
+
+div.ingroups {
+  font-size: 10pt;
+  margin-top: 8px;
 }
 
 .title {
-    font-family: Montserrat;
-    font-size: 32px;
-    font-weight: bold;
-    color: #ffffff;
+  font-family: Montserrat;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--page-foreground-color);
+  margin-left: 20px;
+}
+
+div.contents {
+  margin-left: 30px;
+  margin-right: 30px;
 }
 
 h2.groupheader {
-    border: unset;
-    font-family: Montserrat;
-    font-size: 24px;
-    font-weight: bold;
-    color: #ffffff;
+  border: unset;
+  font-family: Montserrat;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
 }
 
 code {
-    font-family: monospace, fixed;
-    font-size: 12pt;
+  font-family: monospace, fixed;
+  font-size: 12pt;
 }
 
 .memitem {
-    padding-bottom: 0;
+  padding-bottom: 0;
 }
 
 .memtitle {
-    border-top: 1px solid #444444;
-    border-left: 1px solid #444444;
-    border-right: 1px solid #444444;
-    background: #1c1c1c;
-    margin-top: 0;
+  border-top: 1px solid #444;
+  border-left: 1px solid #444;
+  border-right: 1px solid #444;
+  background: #1c1c1c;
+  margin-top: 0;
 }
 
 .memtemplate {
-    color: #ca5201;
+  color: #ca5201;
 }
 
 .memproto {
-    border-top: 1px solid #444444;
-    border-left: 1px solid #444444;
-    border-right: 1px solid #444444;
-    background: #1c1c1c;
-    text-shadow: unset;
-    color: #dddddd;
+  border-top: 1px solid #444;
+  border-left: 1px solid #444;
+  border-right: 1px solid #444;
+  background: #1c1c1c;
+  text-shadow: unset;
+  color: #ddd;
 }
 
-    .memproto a.el {
-        color: #dddddd;
-    }
-
-        .memproto a.el:visited {
-            color: #dddddd;
-        }
+.memproto a.el,
+.memproto a.el:visited {
+  color: darken(#ddd, 10%);
+  /* Darken the main color for links */
+}
 
 .paramtype {
-    color: #ca5201;
+  color: #ca5201;
 }
 
-    .paramtype a.el {
-        color: #ca5201;
-    }
+.paramtype a.el,
+.paramtype a.el:visited {
+  color: darken(#ca5201, 10%);
+  /* Darken the main color for links */
+}
 
-        .paramtype a.el:visited {
-            color: #ca5201;
-        }
+.paramtype a.el:hover {
+  color: lighten(#ca5201, 10%);
+  /* Lighten the color on hover */
+}
 
 .paramname {
-    color: #fffc79;
+  color: #fffc79;
 }
 
-.memdoc > * {
-    width: 650px;
+.memdoc>* {
+  width: 650px;
 }
 
 .memdoc {
-    border-bottom: 1px solid #444444;
-    border-left: 1px solid #444444;
-    border-right: 1px solid #444444;
-    background: #111111;
+  border-bottom: 1px solid #444;
+  border-left: 1px solid #444;
+  border-right: 1px solid #444;
+  background: #111;
 }
 
-.params .paramname, .retval .paramname, .tparams .paramname, .exception .paramname {
-    font-weight: normal;
+.params .paramname,
+.retval .paramname,
+.tparams .paramname,
+.exception .paramname {
+  font-weight: 400;
 }
 
-.mdescLeft, .mdescRight,
-.memItemLeft, .memItemRight,
-.memTemplItemLeft, .memTemplItemRight, .memTemplParams {
-    background: #111111;
-    color: #fffc79;
+.mdescLeft,
+.mdescRight,
+.memItemLeft,
+.memItemRight,
+.memTemplItemLeft,
+.memTemplItemRight,
+.memTemplParams {
+  background: #111;
+  color: #fffc79;
+  padding: 2px 0px 0 8px;
 }
 
-    .mdescLeft a, .mdescRight a,
-    .memItemLeft a, .memItemRight a, .memTemplItemLeft a, .memTemplItemRight a {
-        color: #fffc79;
-    }
+.mdescLeft a,
+.mdescRight a,
+.memItemLeft a,
+.memItemRight a,
+.memTemplItemLeft a,
+.memTemplItemRight a {
+  color: #fffc79;
+}
 
-        .mdescLeft a:visited, .mdescRight a:visited,
-        .memItemLeft a:visited, .memItemRight a:visited, .memTemplItemLeft a:visited, .memTemplItemRight a:visited {
-            color: #fffc79;
-        }
+.mdescLeft a:visited,
+.mdescRight a:visited,
+.memItemLeft a:visited,
+.memItemRight a:visited,
+.memTemplItemLeft a:visited,
+.memTemplItemRight a:visited {
+  color: darken(#fffc79, 10%);
+  /* Darken the main color for links */
+}
 
 .memTemplParams {
-    color: #ca5201;
+  color: #ca5201;
 }
 
 .mdescRight {
-    color: #dddddd;
+  color: #ddd;
 }
 
 .memSeparator {
-    border-bottom: 1px solid #252525;
+  border-bottom: 1px solid #252525;
 }
 
 .inherit_header {
-    color: #dddddd;
-    font-weight: normal;
+  color: #ddd;
+  font-weight: 400;
 }
 
 .dyncontent {
-    width: 650px;
+  width: 650px;
 }
 
-    .dyncontent div.center img {
-        background: #cccccc;
-        /* Only two pixel border, otherwise the map becomes offset too much. */
-        border: solid 2px #cccccc;
-    }
+.dyncontent div.center img {
+  background: #ccc;
+  /* Only two pixel border, otherwise the map becomes offset too much. */
+  border: solid 2px #ccc;
+}
 
 ul li div.image {
-    display: inline;
+  display: inline;
 }
 
 ul li div.image img {
-    margin-left: 20px;
-    text-align: left;
+  margin-left: 20px;
+  text-align: left;
 }
 
 ul li div.image div.caption {
-    display: none;
+  display: none;
 }
 
+#projectname {
+  font-family: Montserrat;
+  font-size: 20px;
+  color: var(--page-foreground-color);
+  margin-left: 30px;
+  margin: 0px;
+}
+
+
+#projectbrief {
+  font: 80% Tahoma, Arial, sans-serif;
+  margin: 0px;
+  padding: 0px;
+}
+
+#projecttitlearea {
+  padding: 10px;
+}
+
+#projectalign {
+  padding-left: 1.5em;
+}
+
+#project_version_dropdown {
+  display: inline;
+  margin-left: 80px;
+}
